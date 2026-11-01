@@ -1,0 +1,14 @@
+# 默认让 Git 自动识别文本文件
+* text=auto
+
+# Windows 批处理必须使用 CRLF，否则 cmd 解析会错乱
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 脚本与源码统一使用 LF
+*.ps1 text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.yaml text eol=lf
+*.example text eol=lf
