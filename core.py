@@ -23,7 +23,7 @@ from langgraph.graph.message import add_messages
 BASE_DIR = Path(__file__).resolve().parent
 OLLAMA_URL = "http://127.0.0.1:11434"
 
-__version__ = "1.1.3"
+__version__ = "1.1.4"
 __author__ = "DeepSeek (deepseek-v4-pro)"
 
 # 元问题关键词（中英文，规则预判，零成本直达编排层）
