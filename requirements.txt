@@ -1,0 +1,11 @@
+# 本地多模型多 Agent 系统 v1.1.1 运行依赖（目标机器用：pip install -r requirements.txt）
+langgraph==1.2.19
+langchain-ollama==1.1.0
+langchain-core==1.7.3
+PyYAML==6.0.3
+# Web 问答界面（webui.py）依赖
+starlette==1.10.0
+uvicorn==0.54.0
+sse-starlette==3.6.0
+# 可选：魔搭 ModelScope 下载工具（本系统改用 curl/Python 脚本下载，可不装）
+# modelscope==1.40.2

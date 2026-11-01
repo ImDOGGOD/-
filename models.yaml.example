@@ -1,0 +1,106 @@
+# 本地多 Agent 系统配置模板
+# 用法：复制本文件为 models.yaml，再按需填入你自己的模型名与 API key。
+#   general = 通用问答；code = 代码辅助；agent = Agent 工具模式
+#   字段：model = Ollama 注册名（ollama list 可查；源文件见"模型仓库"目录）
+#         temperature = 生成温度（规划/审查宜低 0.1-0.3，执行宜高 0.4-0.7）
+#         num_ctx = 上下文窗口（token 数）
+#         num_predict = 单次生成上限（防止生成失控）
+#         role = 系统提示词
+
+general:
+  planner:
+    model: qwen2.5:7b
+    temperature: 0.2
+    num_ctx: 8192
+    num_predict: 512
+    role: |
+      你是本地多智能体团队的"规划师"（你的模型是 qwen2.5:7b）。团队另有执行者 internlm3:8b、审查员 deepseek-r1:8b。
+      当被问到你是谁或团队情况时，简要介绍自己和团队分工。
+      你的任务是判断问题类型并按需制定计划，严格按下面两行输出，不要输出其他内容：
+      类型：SIMPLE / COMPLEX
+      计划：<仅当类型为 COMPLEX 时给出简明执行步骤；其余情况写"无">
+      判定标准：SIMPLE=常识性、一两句话即可答完的简单问题（如算术、翻译、名词解释）；COMPLEX=需要多步推理、专业知识或较长回答的问题。
+  executor:
+    model: internlm3:8b
+    temperature: 0.7
+    num_ctx: 8192
+    num_predict: 4096
+    role: |
+      你是本地多智能体团队的"执行者"（你的模型是 internlm3:8b）。团队另有规划师 qwen2.5:7b、审查员 deepseek-r1:8b。
+      当被问到你是谁或团队情况时，简要介绍自己和团队分工。
+      你负责按规划师的计划、结合对话历史，给出完整、准确、友好的回答；若审查员退回，按其意见修正后重新作答。
+  reviewer:
+    model: deepseek-r1:8b
+    temperature: 0.2
+    num_ctx: 8192
+    num_predict: 8192
+    role: |
+      你是本地多智能体团队的"审查员"（你的模型是 deepseek-r1:8b，推理模型）。团队另有规划师 qwen2.5:7b、执行者 internlm3:8b。
+      当被问到你是谁或团队情况时，简要介绍自己和团队分工。
+      你负责审查执行者的答案：指出事实错误、逻辑漏洞或遗漏，并给出改进意见；最后一行必须只写"判定：通过"或"判定：退回"，正文与示例中不要再出现"判定："字样。
+  max_revisions: 2
+
+code:
+  planner:
+    model: qwen2.5:7b
+    temperature: 0.2
+    num_ctx: 8192
+    num_predict: 512
+    role: |
+      你是代码任务规划师。把用户的编程需求拆成清晰步骤（理解需求、设计思路、写代码、自查边界与错误处理）。只输出计划。
+  executor:
+    model: qwen2.5-coder-7b:q4_k_m
+    temperature: 0.4
+    num_ctx: 8192
+    num_predict: 4096
+    role: |
+      你是资深程序员，负责按计划编写或修改代码。规则：
+      - 代码放在代码块里，附必要的简短说明；
+      - 注意边界条件、异常处理、编码（中文环境用 UTF-8）与可读性；
+      - 若用户粘贴了现有代码，先指出问题再给出修改后的完整代码。
+  reviewer:
+    model: deepseek-r1:8b
+    temperature: 0.1
+    num_ctx: 8192
+    num_predict: 8192
+    role: |
+      你是代码审查专家。检查执行者给出的代码是否存在 bug、逻辑错误、边界问题、性能隐患或与需求不符之处，给出修改意见；最后一行必须只写"判定：通过"或"判定：退回"，正文与示例中不要再出现"判定："字样。
+  max_revisions: 2
+
+agent:
+  executor:
+    model: qwen2.5:7b
+    temperature: 0.3
+    num_ctx: 8192
+    num_predict: 4096
+    role: |
+      你是任务执行 Agent，会使用工具（计算器、当前时间、读文件、列目录、联网搜索）完成任务。
+      规则：一步一步来；每次最多调用一个工具，等待结果返回后再决定下一步；工具结果不理想就换方法重试；任务完成后给出简洁的最终回答。
+  reviewer:
+    model: internlm3:8b
+    temperature: 0.1
+    num_ctx: 8192
+    num_predict: 2048
+    role: |
+      你是 Agent 任务审查员。检查 Agent 是否真正完成了任务、结果是否正确、是否有遗漏；最后一行必须只写"判定：通过"或"判定：退回"，正文与示例中不要再出现"判定："字样。
+  max_revisions: 2
+  max_tool_steps: 10
+
+# 联网搜索设置（工具 web_search 读取；更换服务商只需改这里）
+search:
+  provider: bocha
+  api_key: 请填入你的博查API密钥
+  base_url: https://api.bochaai.com/v1/web-search
+  count: 5
+
+# 长期记忆库设置
+memory:
+  auto_memorize: true   # 复杂问题回答后自动提炼长期记忆（每轮约多花 10 秒）
+  topk: 4               # 每次提问注入的相关记忆条数上限
+
+# 知识库设置（RAG：外部资料切块向量化，提问时语义检索注入）
+knowledge:
+  embed_model: bge-m3   # 嵌入模型（Ollama 注册名；未就绪时自动退回关键词检索）
+  chunk_size: 400       # 切片长度（字符）
+  chunk_overlap: 80     # 相邻切片重叠（字符）
+  topk: 4               # 每次提问注入的相关片段数上限
