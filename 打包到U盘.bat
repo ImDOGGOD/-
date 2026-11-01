@@ -1,19 +1,33 @@
 @echo off
-chcp 65001 >nul
-title ZuZhiDuoMou - Package to USB
+chcp 936 >nul
+cd /d "%~dp0"
+title ×ãÖÇ¶àÄ± ´ò°üµ½UÅÌ
 echo ============================================
-echo  Copy portable package + model warehouse
-echo  to a USB drive / shared folder for delivery.
+echo  ×ãÖÇ¶àÄ± ´ò°ü¹¤¾ß v1.1.2
+echo  °Ñ ±ãÐ¯°ü + Ä£ÐÍ²Ö¿â ¸´ÖÆµ½ UÅÌ/Ä¿±êÎÄ¼þ¼Ð
 echo ============================================
 echo.
-set /p DEST="Enter destination folder (e.g. E:\zuzhiduomou): "
+if not exist "·¢²¼" (
+    echo [!] Î´ÕÒµ½"·¢²¼"ÎÄ¼þ¼Ð¡£
+    echo     ±¾¹¤¾ß±ØÐëÔÚ¡¾Ô­µçÄÔ¡¿µÄÏîÄ¿Ä¿Â¼ÀïÔËÐÐ£¨ÀýÈç F:\AI\local£©£¬
+    echo     ²»Òª°ÑËüµ¥¶À¿½µ½ U ÅÌÉÏÔËÐÐ¡£
+    pause
+    exit /b 1
+)
+if not exist "Ä£ÐÍ²Ö¿â" (
+    echo [!] Î´ÕÒµ½"Ä£ÐÍ²Ö¿â"ÎÄ¼þ¼Ð¡£ÇëÔÚ±¾»úÏîÄ¿Ä¿Â¼ÔËÐÐ±¾¹¤¾ß¡£
+    pause
+    exit /b 1
+)
+set /p DEST=ÇëÊäÈëÄ¿±êÎÄ¼þ¼Ð£¨ÀýÈç E:\zuzhiduomou£©: 
 if "%DEST%"=="" goto done
 if not exist "%DEST%" mkdir "%DEST%"
-copy /y "å‘å¸ƒ\è¶³æ™ºå¤šè°‹_v1.1.1_ä¾¿æºåŒ….zip" "%DEST%\" >nul
-xcopy /e /i /y "æ¨¡åž‹ä»“åº“" "%DEST%\æ¨¡åž‹ä»“åº“\" >nul
+copy /y "·¢²¼\*.zip" "%DEST%\" >nul
+if errorlevel 1 echo [!] ¸´ÖÆ±ãÐ¯°üÊ§°Ü
+xcopy /e /i /y "Ä£ÐÍ²Ö¿â" "%DEST%\Ä£ÐÍ²Ö¿â\" >nul
+if errorlevel 1 echo [!] ¸´ÖÆÄ£ÐÍ²Ö¿âÊ§°Ü
 echo.
-echo  Done. Give the whole folder to the other computer:
-echo  on that machine, unzip the package, keep the model
-echo  warehouse folder inside, run install.bat, then start.bat.
+echo Íê³É£¡°ÑÕû¸öÄ¿±êÎÄ¼þ¼Ð¿½¸ø¶Ô·½µçÄÔ¼´¿É£º
+echo ¶Ô·½²Ù×÷£º½âÑ¹ zip -^> Ä£ÐÍ²Ö¿â²¢Èë -^> Ë«»÷ °²×°²¿Êð.bat -^> Æô¶¯.bat
 :done
 pause
