@@ -212,4 +212,38 @@
 
 ---
 
+## 可复刻性修复（2026-11-02，豆包）—— 提交 9c58e45
+
+### 背景
+
+核查"他人能否仅凭仓库文件复刻整套系统"，发现若干写死路径与文件误排问题，会导致他人部署失败。
+
+### 发现的问题
+
+1. 致命：`.gitignore` 中 `模型仓库/` 整行把整个目录排除，导致 6 个 Modelfile（导入配方）、import_model.ps1 与说明文件未上传；而安装部署.bat 依赖这些文件，他人执行 `ollama create -f Modelfile` 会全部失败。
+2. 跨机器硬伤：tools.py 写死 `ALLOWED_ROOT = Path(r"F:\AI")`，他人部署到其他路径时文件工具全部拒绝。
+3. 下载脚本写死路径：download_coder/bge/internlm3/gguf.py 与 download_r1/spark/robust_download.ps1 的输出目录写死 `F:\AI\local\gguf`，换路径即失效。
+4. 文档过时：无模型库教程便携包版本号停留在 v1.1.1；requirements.txt 注释版本号过时。
+
+### 操作更改记录（增量，未删改历史内容）
+
+1. `.gitignore`：删除 `模型仓库/` 整行，改由 `*.gguf` 排除权重、`*.log` 排除日志，目录内小文件正常纳入。
+2. tools.py：`ALLOWED_ROOT` 改为 `Path(__file__).resolve().parent`，同步更新 docstring 与注释。
+3. 4 个 Python 下载脚本：输出目录改为基于 `__file__` 的 `gguf` 子目录。
+4. 3 个 PowerShell 脚本：`$outdir` 改为 `Join-Path $PSScriptRoot "gguf"`。
+5. 无模型库教程便携包更新为 v1.1.4；requirements.txt 注释更新为 v1.1.4。
+
+### 验证结果（实证）
+
+- 全部改动 Python 文件通过 `py_compile` 语法检查。
+- tools.py 路径逻辑验证：ALLOWED_ROOT 随项目位置动态推导，相对路径正确解析。
+- 重新下载 GitHub 实际 ZIP：共 47 个条目，6 个 Modelfile 齐全、0 个 GGUF 权重、import_model.ps1 在位。
+
+### 署名
+
+- 系统框架与脚本原始作者：DeepSeek（deepseek-v4-pro）
+- 本次可复刻性核查、修复与验证：豆包
+
+---
+
 > 记录原则：所有条目以实际部署、文件与验证结果为准；后续每次改动应在此文件追加新版本，不回填、不臆测。
