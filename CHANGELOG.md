@@ -443,6 +443,18 @@
 - 根因诊断与修复代码：匠师（JiangShi）诊断、谋士（MoShi）架构复核
 - 验证与本记录：匠师（JiangShi）
 
+#### 七、GitHub 实际发布包验证（推送后，干净环境实证）
+
+- 远程核对：GitHub API 返回 main 最新 commit 为 9b9fe4c，与本地一致。
+- 下载实际 ZIP（codeload.github.com/.../zip/refs/heads/main）并解压到独立临时目录，确认：
+  - 包内无 models.yaml（密钥不入库）、无 *.db/*.gguf/*.exe 等敏感或大文件；代码、文档、模板、LICENSE、bat/ps1 齐全。
+- 静态检查：4 个 bat 全部 CRLF、孤立 LF=0；models.yaml.example 含 cloud 段且两个 api_key 均为空字符串；全部 py 文件 py_compile 失败数 0；PipelineState/AgentRuntimeState/ChatOpenAI/云端函数/版本号 1.3.0 均在。
+- 运行时检查（用 venv 解释器在干净目录加载）：
+  - 两个状态类独立、字段互不污染（PipelineState 含 draft 不含 messages，AgentRuntimeState 反之）；
+  - cloud_status 初始正确；开关开/关均成功重建图，三模式图与标题均可取；
+  - 空 key 时即便打开开关，executor 仍正确构造 ChatOllama（降级类型已确认），不报错。
+- 结论：GitHub 上的公开包可正常下载、部署、运行，未发现 bug。验证过程中在临时目录生成的 models.yaml 仅为本地模拟部署产物，不影响仓库。
+
 ---
 
 > 记录原则：所有条目以实际部署、文件与验证结果为准；后续每次改动应在此文件追加新版本，不回填、不臆测。
