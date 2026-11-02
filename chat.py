@@ -16,16 +16,15 @@ from collections import deque
 import memory
 import kb
 from core import (
-    AGENT_TITLES,
-    CODE_GRAPH,
-    CODE_TITLES,
-    GENERAL_GRAPH,
-    GENERAL_TITLES,
     OLLAMA_URL,
     __version__,
     ask,
     ask_agent,
     check_ollama,
+    cloud_status,
+    get_graph,
+    get_titles,
+    set_cloud_enabled,
     setup_console,
 )
 from core import cfg
@@ -44,11 +43,24 @@ def command_reply(q: str):
             "  直接提问        → 通用问答模式\n"
             "  /code 问题      → 代码辅助模式（/代码）\n"
             "  /agent 任务     → Agent 工具模式（/智能体，可计算/读文件/联网搜索）\n"
+            "  /云端 开/关     → 切换云端大模型开关（/cloud）\n"
             "  /记住 内容      → 手动存入长期记忆（/remember）\n"
             "  /回忆 关键词    → 检索记忆与历史问答（/recall）\n"
             "  /忘记 编号      → 删除一条记忆（/forget）\n"
             "  /记忆           → 查看统计与最近记忆（/memory）\n"
             "  /知识 add <文件> | fetch <网址> | 查 <词> | 列表 | 删除 <编号> | 清空（/kb）"
+        )
+    if cmd in ("/云端", "/cloud"):
+        if arg in ("开", "on", "1", "true"):
+            st = set_cloud_enabled(True)
+            return f"[√] 云端开关已设为：开（密钥{'已配置' if st['configured'] else '未配置，回退本地'}）"
+        if arg in ("关", "off", "0", "false"):
+            st = set_cloud_enabled(False)
+            return "[√] 云端开关已设为：关（全部走本地 Ollama）"
+        st = cloud_status()
+        return (
+            f"云端开关：{'开' if st['enabled'] else '关'}　密钥：{'已配置' if st['configured'] else '未配置（回退本地）'}\n"
+            f"服务商：{st['base_url']}　模型：{st['model']}\n用法：/云端 开 | /云端 关"
         )
     if cmd in ("/记住", "/remember"):
         if not arg:
@@ -175,7 +187,7 @@ def main():
                 continue
             mem_ctx = memory.build_context(question)
             kb_ctx = kb.build_context(question)
-            result = ask(CODE_GRAPH, CODE_TITLES, question, list(history), memory_ctx=mem_ctx, knowledge_ctx=kb_ctx)
+            result = ask(get_graph("code"), get_titles("code"), question, list(history), memory_ctx=mem_ctx, knowledge_ctx=kb_ctx)
             if result is None:
                 continue
             finish_turn(question, result, "code", history)
@@ -212,7 +224,7 @@ def main():
         else:
             mem_ctx = memory.build_context(q)
             kb_ctx = kb.build_context(q)
-            result = ask(GENERAL_GRAPH, GENERAL_TITLES, q, list(history), memory_ctx=mem_ctx, knowledge_ctx=kb_ctx)
+            result = ask(get_graph("general"), get_titles("general"), q, list(history), memory_ctx=mem_ctx, knowledge_ctx=kb_ctx)
             if result is None:
                 continue
             finish_turn(q, result, result.get("mode", "?"), history)

@@ -13,14 +13,14 @@ import memory
 import uvicorn
 from chat import command_reply
 from core import (
-    CODE_GRAPH,
-    CODE_TITLES,
-    GENERAL_GRAPH,
-    GENERAL_TITLES,
     __version__,
     check_ollama,
+    cloud_status,
+    get_graph,
+    get_titles,
     iter_agent,
     iter_ask,
+    set_cloud_enabled,
 )
 from sse_starlette.sse import EventSourceResponse
 from starlette.applications import Starlette
@@ -104,6 +104,7 @@ HTML = r"""<!doctype html>
   .tbtn{margin-left:12px;font-size:11px;color:var(--dim);border:1px solid var(--line);
     background:transparent;padding:4px 12px;border-radius:999px;cursor:pointer;letter-spacing:.06em;transition:.2s;}
   .tbtn:hover{color:var(--text);border-color:var(--accent);}
+  #cbtn.on{color:var(--accent);border-color:var(--accent);}
   #panel{position:fixed;top:64px;right:28px;width:280px;background:var(--surface);
     border:1px solid var(--line);border-radius:16px;padding:18px;display:none;z-index:99;
     box-shadow:0 18px 50px rgba(0,0,0,.55);}
@@ -128,6 +129,7 @@ HTML = r"""<!doctype html>
 <header>
   <div class="logo">谋</div>
   <div class="title">足智多谋 <small>v""" + __version__ + r""" · 全部数据本机运行 · 谋士 出品</small></div>
+  <button class="tbtn" id="cbtn">云端：关</button>
   <button class="tbtn" id="tbtn">主题</button>
   <div class="status"><span id="dot" class="dot"></span><span id="stat">检测中…</span></div>
 </header>
@@ -247,6 +249,33 @@ q.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefau
 async function ping(){try{const r=await fetch('/api/ping');const d=await r.json();
   $('dot').className='dot '+(d.ok?'ok':'bad'); $('stat').textContent=d.ok?('Ollama 正常 · 模型 '+(d.models||0)+' 个'):'Ollama 未启动';}
   catch(_){$('dot').className='dot bad';$('stat').textContent='服务连接失败';}}
+// 云端大模型开关（混合模式）
+function renderCloud(st){
+ const on=st.enabled===true;
+ $('cbtn').classList.toggle('on',on);
+ $('cbtn').textContent=on?'云端：开':'云端：关';
+ $('cbtn').title=st.configured
+   ?('服务商 '+st.base_url+' · 模型 '+st.model+' · 云端岗位 '+st.roles.join('/'))
+   :'未配置 api_key，打开也会回退本地（在 models.yaml 的 cloud 段配置）';
+}
+async function syncCloud(enabled){
+ try{
+  const r=await fetch('/api/cloud',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({enabled})});
+  renderCloud(await r.json());
+ }catch(e){}
+}
+$('cbtn').onclick=async()=>{
+ const willOn=$('cbtn').classList.contains('on')===false;
+ await syncCloud(willOn);
+ localStorage.setItem('zzdm-cloud',willOn?'1':'0');
+};
+(async function initCloud(){
+ try{
+  if(localStorage.getItem('zzdm-cloud')==='1'){await syncCloud(true);}
+  else{const r=await fetch('/api/cloud');renderCloud(await r.json());}
+ }catch(e){}
+})();
 ping(); setInterval(ping,30000);
 </script>
 </body></html>"""
@@ -293,11 +322,11 @@ async def api_chat(request):
         mem_ctx = memory.build_context(question)
         kb_ctx = kb.build_context(question)
         if mode == "code":
-            eviter = iter_ask(CODE_GRAPH, CODE_TITLES, question, list(HISTORY), mem_ctx, kb_ctx)
+            eviter = iter_ask(get_graph("code"), get_titles("code"), question, list(HISTORY), mem_ctx, kb_ctx)
         elif mode == "agent":
             eviter = iter_agent(question, mem_ctx, kb_ctx)
         else:
-            eviter = iter_ask(GENERAL_GRAPH, GENERAL_TITLES, question, list(HISTORY), mem_ctx, kb_ctx)
+            eviter = iter_ask(get_graph("general"), get_titles("general"), question, list(HISTORY), mem_ctx, kb_ctx)
         for ev, data in eviter:
             if ev == "banner":
                 yield {"event": "banner", "data": json.dumps({"title": data})}
@@ -326,10 +355,23 @@ async def api_chat(request):
     return EventSourceResponse(gen())
 
 
+async def api_cloud(request):
+    """云端开关：GET 返回状态，POST 切换（入参 {"enabled": true/false}）。"""
+    if request.method == "POST":
+        try:
+            body = await request.json()
+            status = set_cloud_enabled(bool(body.get("enabled")))
+        except Exception as e:
+            return HTMLResponse(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False), media_type="application/json")
+        return HTMLResponse(json.dumps({"ok": True, **status}, ensure_ascii=False), media_type="application/json")
+    return HTMLResponse(json.dumps({"ok": True, **cloud_status()}, ensure_ascii=False), media_type="application/json")
+
+
 routes = [
     Route("/", homepage),
     Route("/api/ping", api_ping),
     Route("/api/chat", api_chat, methods=["POST"]),
+    Route("/api/cloud", api_cloud, methods=["GET", "POST"]),
 ]
 app = Starlette(routes=routes)
 

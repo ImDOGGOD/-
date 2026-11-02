@@ -85,6 +85,12 @@ Two design principles guide the project:
 - Built-in `.gitattributes` / `.gitignore` govern line endings, encodings, and sensitive files so anyone can download and deploy;
 - A plugin space lets you extend agent capabilities by writing a single function.
 
+### 2.6 Cloud Hybrid Mode (New in v1.3.0)
+
+- The client provides a "Enable cloud model" toggle: once on, the selected roles (planner/executor/reviewer) use an OpenAI-compatible cloud model, while the remaining roles stay on local Ollama — hence "hybrid".
+- Customizable base_url/api_key/model/roles; works with DeepSeek, Qwen (DashScope), Zhipu GLM, OpenAI, etc. Off by default and fully local; the API key is never committed.
+- Falls back to local automatically when no key is set or the toggle is off, without errors. Tested end-to-end with a real DeepSeek key for both full-cloud and hybrid Q&A.
+
 ---
 
 ## 3. Architecture
@@ -201,6 +207,7 @@ copy models.yaml.example models.yaml
 | `/recall <keyword>` | Search memories and past Q&A |
 | `/forget <id>` | Delete a memory |
 | `/memory` | View statistics and recent memories |
+| `/cloud on/off` | Toggle the cloud model; without an argument, show status |
 | `/help` | Show the full command help |
 
 ### 6.2 Knowledge Base Commands
@@ -237,6 +244,17 @@ provider: bocha
 base_url: https://api.bochaai.com/v1/web-search
 api_key: put-your-key-here
 count: 5
+```
+
+The cloud hybrid mode is configured in the `cloud` section of the same file (empty api_key in the public template):
+
+```yaml
+cloud:
+  enabled: false
+  base_url: https://api.deepseek.com
+  api_key: ""          # your own cloud key, kept locally only
+  model: deepseek-chat
+  roles: [planner, executor, reviewer]
 ```
 
 ### 7.2 Line Ending & Encoding Governance

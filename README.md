@@ -85,6 +85,12 @@
 - 内置 `.gitattributes` / `.gitignore` 治理行尾编码与敏感文件，他人下载即可部署；
 - 插件化工具空间，写一个函数即可扩展 Agent 能力。
 
+### 2.6 云端混合模式（v1.3.0 新增）
+
+- 客户端提供"启动云端大模型"开关：打开后，指定岗位（planner/executor/reviewer）走兼容 OpenAI 接口的云端大模型，其余岗位仍走本地 Ollama，即"混合"。
+- 支持自定义 base_url/api_key/model/roles，适配 DeepSeek、通义千问、智谱 GLM、OpenAI 等；默认关闭、默认全本地，密钥不入库。
+- 未配置密钥或开关关闭时自动回退本地，不报错；已用真实 DeepSeek 密钥实测全云端与混合问答正常。
+
 ---
 
 ## 3. 系统架构
@@ -201,6 +207,7 @@ copy models.yaml.example models.yaml
 | `/回忆 关键词`（`/recall`） | 检索记忆与历史问答 |
 | `/忘记 编号`（`/forget`） | 删除一条记忆 |
 | `/记忆`（`/memory`） | 查看统计与最近记忆 |
+| `/云端 开/关`（`/cloud`） | 切换云端大模型开关，不带参数查看状态 |
 | `/帮助`（`/help`） | 查看完整命令帮助 |
 
 ### 6.2 知识库命令
@@ -237,6 +244,17 @@ provider: bocha
 base_url: https://api.bochaai.com/v1/web-search
 api_key: 你的密钥在这里填写
 count: 5
+```
+
+云端混合模式在同一文件的 `cloud` 段配置（公开模板里 api_key 为空）：
+
+```yaml
+cloud:
+  enabled: false
+  base_url: https://api.deepseek.com
+  api_key: ""          # 填自己的云端密钥，仅本地保留
+  model: deepseek-chat
+  roles: [planner, executor, reviewer]
 ```
 
 ### 7.2 行尾与编码治理

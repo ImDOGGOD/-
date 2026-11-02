@@ -17,13 +17,14 @@ import yaml
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 from langgraph.graph import START, END, StateGraph
 from langgraph.graph.message import add_messages
 
 BASE_DIR = Path(__file__).resolve().parent
 OLLAMA_URL = "http://127.0.0.1:11434"
 
-__version__ = "1.2.2"
+__version__ = "1.3.0"
 __author__ = "谋士 (MoShi)"
 
 # 元问题关键词（中英文，规则预判，零成本直达编排层）
@@ -69,8 +70,36 @@ def _role(section, role_key):
     return _section(section).get(role_key) or {}
 
 
+def _cloud_section():
+    return cfg.get("cloud") or {}
+
+
+# 云端运行时开关：初始值取 models.yaml，客户端可通过 set_cloud_enabled 动态切换
+CLOUD_STATE = {"enabled": bool(_cloud_section().get("enabled", False))}
+
+
 def _make_llm(section, role_key):
     c = _role(section, role_key)
+    cloud = _cloud_section()
+    use_cloud = (
+        CLOUD_STATE["enabled"]
+        and role_key in (cloud.get("roles") or [])
+        and bool(cloud.get("api_key"))
+        and bool(cloud.get("base_url"))
+    )
+    if use_cloud:
+        # 兼容 OpenAI 接口的云端大模型（DeepSeek/通义/智谱/OpenAI 等）
+        kwargs = {
+            "model": cloud.get("model") or c.get("model"),
+            "api_key": cloud.get("api_key"),
+            "base_url": cloud.get("base_url"),
+            "temperature": c.get("temperature", cloud.get("temperature", 0.3)),
+        }
+        max_tokens = cloud.get("num_predict") or c.get("num_predict")
+        if max_tokens:
+            kwargs["max_tokens"] = int(max_tokens)
+        return ChatOpenAI(**kwargs), c.get("role", "")
+    # 本地 Ollama 模型（默认；云端未配置 key 时也自动回退到此）
     kwargs = {"model": c.get("model"), "temperature": c.get("temperature", 0.3)}
     if c.get("num_ctx"):
         kwargs["num_ctx"] = int(c["num_ctx"])
@@ -103,7 +132,7 @@ def build_team_intro() -> str:
 TEAM_INTRO = build_team_intro()
 
 
-class AgentState(TypedDict, total=False):
+class PipelineState(TypedDict, total=False):
     question: str
     mode: str          # meta / simple / complex
     plan: str
@@ -140,7 +169,7 @@ def extract_plan(text: str) -> str:
 
 
 def make_router_node(planner_llm, planner_role):
-    def router_node(state: AgentState):
+    def router_node(state: PipelineState):
         question = state["question"]
         if rule_meta(question):
             return {"mode": "meta", "plan": ""}
@@ -154,7 +183,7 @@ def make_router_node(planner_llm, planner_role):
 
 
 def make_executor_node(executor_llm, executor_role):
-    def executor_node(state: AgentState):
+    def executor_node(state: PipelineState):
         mode = state.get("mode") or "complex"
         parts = []
         if state.get("history"):
@@ -193,7 +222,7 @@ def judge_passed(text: str) -> bool:
 
 
 def make_reviewer_node(reviewer_llm, reviewer_role):
-    def reviewer_node(state: AgentState):
+    def reviewer_node(state: PipelineState):
         instruction = f"用户问题：{state['question']}\n待审查答案：{state['draft']}\n"
         if state.get("memory_ctx"):
             instruction += f"相关长期记忆（供核对事实参考）：{state['memory_ctx']}\n"
@@ -208,7 +237,7 @@ def make_reviewer_node(reviewer_llm, reviewer_role):
     return reviewer_node
 
 
-def meta_answer_node(state: AgentState):
+def meta_answer_node(state: PipelineState):
     """元问题：由编排层直接回答，无需任何模型。"""
     return {
         "plan": "（关于系统自身的问题，由编排层直接回答）",
@@ -217,16 +246,16 @@ def meta_answer_node(state: AgentState):
     }
 
 
-def finalize_node(state: AgentState):
+def finalize_node(state: PipelineState):
     """简单问题收尾：直答即通过。"""
     return {"passed": True}
 
 
-def route_after_router(state: AgentState):
+def route_after_router(state: PipelineState):
     return state.get("mode") or "complex"
 
 
-def route_after_executor(state: AgentState):
+def route_after_executor(state: PipelineState):
     return "simple" if state.get("mode") == "simple" else "complex"
 
 
@@ -242,7 +271,7 @@ def build_pipeline(section: str):
             return "finish"
         return "revise"
 
-    builder = StateGraph(AgentState)
+    builder = StateGraph(PipelineState)
     builder.add_node("router", make_router_node(planner_llm, planner_role))
     builder.add_node("executor", make_executor_node(executor_llm, executor_role))
     builder.add_node("reviewer", make_reviewer_node(reviewer_llm, reviewer_role))
@@ -267,10 +296,24 @@ def build_pipeline(section: str):
 
 
 def make_titles(section: str):
+    cloud = _cloud_section()
+
+    def label(role_key):
+        local_model = _role(section, role_key).get("model", "?")
+        on_cloud = (
+            CLOUD_STATE["enabled"]
+            and role_key in (cloud.get("roles") or [])
+            and cloud.get("api_key")
+            and cloud.get("base_url")
+        )
+        if on_cloud:
+            return f"{cloud.get('model') or local_model}（云端）"
+        return local_model
+
     return {
-        "router": f"路由/规划 {_role(section, 'planner').get('model', '?')}",
-        "executor": f"执行 {_role(section, 'executor').get('model', '?')}",
-        "reviewer": f"审查 {_role(section, 'reviewer').get('model', '?')}",
+        "router": f"路由/规划 {label('planner')}",
+        "executor": f"执行 {label('executor')}",
+        "reviewer": f"审查 {label('reviewer')}",
         "meta_answer": "系统自我介绍",
     }
 
@@ -348,7 +391,7 @@ def ask(graph_obj, titles, question, history=None, memory_ctx=None, knowledge_ct
 
 # ---------------- Agent 模式（工具调用循环 + 审查回路，双模型协作） ----------------
 
-class AgentState(TypedDict, total=False):
+class AgentRuntimeState(TypedDict, total=False):
     messages: Annotated[list, add_messages]
     question: str
     memory_ctx: str
@@ -422,7 +465,7 @@ def build_agent_graph():
             return "finish"
         return "feedback"
 
-    builder = StateGraph(AgentState)
+    builder = StateGraph(AgentRuntimeState)
     builder.add_node("agent", agent_node)
     builder.add_node("tools", tools_node)
     builder.add_node("reviewer", reviewer_node)
@@ -436,12 +479,32 @@ def build_agent_graph():
 
 
 AGENT_GRAPH = build_agent_graph()
-AGENT_TITLES = {
-    "agent": f"Agent 执行 {_role('agent', 'executor').get('model', '?')}",
-    "tools": "工具调用",
-    "reviewer": f"Agent 审查 {_role('agent', 'reviewer').get('model', '?')}",
-    "feedback": "退回重做",
-}
+
+
+def make_agent_titles():
+    cloud = _cloud_section()
+
+    def label(role_key):
+        local_model = _role("agent", role_key).get("model", "?")
+        on_cloud = (
+            CLOUD_STATE["enabled"]
+            and role_key in (cloud.get("roles") or [])
+            and cloud.get("api_key")
+            and cloud.get("base_url")
+        )
+        if on_cloud:
+            return f"{cloud.get('model') or local_model}（云端）"
+        return local_model
+
+    return {
+        "agent": f"Agent 执行 {label('executor')}",
+        "tools": "工具调用",
+        "reviewer": f"Agent 审查 {label('reviewer')}",
+        "feedback": "退回重做",
+    }
+
+
+AGENT_TITLES = make_agent_titles()
 
 
 def iter_agent(question, memory_ctx=None, knowledge_ctx=None):
@@ -505,3 +568,47 @@ def ask_agent(question, memory_ctx=None, knowledge_ctx=None):
             final = data
     print()
     return final
+
+
+# ---------------- 云端混合模式：运行时开关与图管理 ----------------
+
+def _rebuild_graphs():
+    """按当前 CLOUD_STATE 重新构建全部图与标题，替换模块级实例。"""
+    global GENERAL_GRAPH, CODE_GRAPH, AGENT_GRAPH
+    global GENERAL_TITLES, CODE_TITLES, AGENT_TITLES
+    GENERAL_GRAPH = build_pipeline("general")
+    CODE_GRAPH = build_pipeline("code")
+    AGENT_GRAPH = build_agent_graph()
+    GENERAL_TITLES = make_titles("general")
+    CODE_TITLES = make_titles("code")
+    AGENT_TITLES = make_agent_titles()
+
+
+def set_cloud_enabled(flag):
+    """切换云端开关并重建图（每次都重建，保证图与当前配置/roles一致）。返回最新状态。"""
+    flag = bool(flag)
+    CLOUD_STATE["enabled"] = flag
+    _rebuild_graphs()
+    return cloud_status()
+
+
+def cloud_status():
+    cloud = _cloud_section()
+    return {
+        "enabled": CLOUD_STATE["enabled"],
+        "configured": bool(cloud.get("api_key")),
+        "provider": cloud.get("provider", ""),
+        "base_url": cloud.get("base_url", ""),
+        "model": cloud.get("model", ""),
+        "roles": list(cloud.get("roles") or []),
+    }
+
+
+def get_graph(mode):
+    """前端统一入口：返回当前（重建后的）图实例。"""
+    return {"general": GENERAL_GRAPH, "code": CODE_GRAPH, "agent": AGENT_GRAPH}[mode]
+
+
+def get_titles(mode):
+    """前端统一入口：返回当前（重建后的）标题。"""
+    return {"general": GENERAL_TITLES, "code": CODE_TITLES, "agent": AGENT_TITLES}[mode]

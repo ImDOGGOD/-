@@ -1,6 +1,7 @@
 # 本地多模型多 Agent 系统 v1.1.4 运行依赖（目标机器用：pip install -r requirements.txt）
 langgraph==1.2.19
 langchain-ollama==1.1.0
+langchain-openai==1.7.3
 langchain-core==1.7.3
 PyYAML==6.0.3
 # Web 问答界面（webui.py）依赖

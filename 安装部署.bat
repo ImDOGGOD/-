@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
-title ZuZhiDuoMou Deploy v1.2.2
+title ZuZhiDuoMou Deploy v1.3.0
 echo ============================================
-echo   ZuZhiDuoMou  Deploy Tool  v1.2.2
+echo   ZuZhiDuoMou  Deploy Tool  v1.3.0
 echo   Author: MoShi
 echo ============================================
 echo.

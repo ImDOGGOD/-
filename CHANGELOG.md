@@ -370,4 +370,79 @@
 
 ---
 
+## v1.3.0（2026-11-02）—— 云端混合模式（本地 + 云端大模型可切换）
+
+### 背景与目标
+
+- 用户拍板采用"混合"方案：保留本地 Ollama 全离线能力，同时在客户端新增"启动云端大模型"开关，支持自定义配置，完成后检查可运行。
+- 设计原则：默认仍走本地、密钥不入库、未配置密钥时自动降级本地不崩；复用已验证的图构建函数，不引入脆弱的 LLM 代理层。
+
+### 变更清单（依据实际代码）
+
+1. 依赖：新增 `langchain-openai==1.7.3`（连带 openai 3.42.1、tiktoken 0.14.0、jiter、regex），已写入 requirements.txt。
+2. 配置：models.yaml 与 models.yaml.example 均新增 `cloud` 段（enabled/provider/base_url/api_key/model/roles/temperature/num_predict）；公开模板 api_key 为空，本地 models.yaml 仍被 .gitignore 排除。
+3. core.py：
+   - 新增 ChatOpenAI 导入、`_cloud_section()`、运行时状态 `CLOUD_STATE`；
+   - 重写 `_make_llm()`：开关启用且岗位在 cloud.roles 内且有 key/base_url 时返回 ChatOpenAI（num_predict 映射为 max_tokens），否则返回本地 ChatOllama；
+   - 新增 `_rebuild_graphs()`、`set_cloud_enabled()`、`cloud_status()`，以及前端统一访问器 `get_graph()`/`get_titles()`；切换开关时重建三图与标题。
+   - 标题在云端岗位后标注"（云端）"，本地/云端状态一目了然。
+4. webui.py：header 新增"云端：开/关"按钮（含高亮样式与悬停说明），新增 `GET/POST /api/cloud` 路由；前端改用 get_graph/get_titles；开关状态用 localStorage（键 zzdm-cloud）持久化，刷新自动同步后端。
+5. chat.py：新增 `/云端 开/关`（/cloud）斜杠命令，帮助文本同步；主循环改用 get_graph/get_titles。
+
+### 检查与验证（实测结果）
+
+- 全部 Python 文件 py_compile 通过（core/webui/chat 退出码均为 0）。
+- 本地模式回归：通用问答经"路由 qwen2.5:7b → 执行 internlm3:8b"正常流式输出，无错误。
+- 空 key 降级：打开云端开关但 api_key 为空时，`_make_llm` 仍返回 ChatOllama，问答正常不崩。
+- 真实云端链路：将 cloud 指向 Ollama 的 OpenAI 兼容端点（http://127.0.0.1:11434/v1，占位 key，model=qwen2.5:7b），LLM 类型确认为 ChatOpenAI，问答成功且标题正确显示"（云端）"；验证后内存配置已还原。
+- Web 服务实测：首页 HTTP 200（含云端按钮与 JS），/api/ping（ok、6 模型）、/api/cloud GET 与 POST 开/关均正确响应。
+- 说明：真实云端调用需在 models.yaml 的 cloud 段填入有效服务商的 base_url/api_key/model；当前无真实云端密钥，故以 Ollama 兼容端点实证 ChatOpenAI 全链路。
+
+### 署名
+
+- 云端混合模式架构与代码：谋士（MoShi）
+- 端到端验证、版本号同步与记录：匠师（JiangShi）
+
+### 补充（2026-11-02 增量）：真实密钥验证与 `KeyError: 'draft'` 修复
+
+#### 一、真实云端密钥验证（用户提供测试密钥）
+
+- 密钥写入本地 models.yaml 的 cloud 段（api_key 带引号；该文件被 .gitignore 第 29 行排除，不入库，公开模板 example 仍为空）。
+- 直接构造 ChatOpenAI 调用 DeepSeek 端点（base_url=https://api.deepseek.com，model=deepseek-chat）成功：密钥有效，回答准确。
+- 打开云端开关驱动完整 pipeline，全岗位云端问答成功，banners 正确显示"（云端）"，瑞利散射等问题回答准确。
+
+#### 二、问题现象
+
+- 混合三场景测试（同一复杂问题）：纯本地正常；但"executor 走 ChatOpenAI + 问题走 reviewer 复杂路径"时，reviewer_node（core.py 内 `state['draft']`）报 `KeyError: 'draft'`，回答为空。
+- 已排除：与 stream_mode 无关（values 与 messages+values 均报错）；ChatOpenAI 本身无问题（最小诊断图普通边正常）；全新构建图同样复现，非运行时污染。
+
+#### 三、问题为什么产生（根因）
+
+- core.py 中存在两个同名 `class AgentState`：
+  1. pipeline 版（规划—执行—审查图用），字段含 question/mode/plan/draft/review/passed/revisions/history/memory_ctx/knowledge_ctx；
+  2. agent 版（Agent 工具图用），字段含 messages（add_messages 聚合）/question/memory_ctx/review/passed/revisions/tool_steps。
+- Python 模块加载时第二个类定义覆盖了同名全局名。`build_pipeline` 内 `StateGraph(AgentState)` 在模块末尾被调用时，延迟解析到第二个类，其 schema 缺少 mode/plan/draft 等字段定义。
+- 节点写入这些"计划外"字段时，LangGraph 虽动态补出对应 channel，但条件边触发的下游节点（reviewer）在构建 input 时无法可靠读取这些未在正式 schema 声明的通道，故读到旧快照、缺失 draft，最终抛 KeyError。本地 ChatOllama 路径此前未触发该时序，问题一直潜伏。
+
+#### 四、操作更改记录（修复）
+
+1. 第一个类重命名为 `PipelineState`，第二个类重命名为 `AgentRuntimeState`，消除同名覆盖。
+2. pipeline 全部节点（router/executor/reviewer/meta_answer/finalize/route_*）类型注解改为 `PipelineState`；`build_pipeline` 内改为 `StateGraph(PipelineState)`。
+3. `build_agent_graph` 内改为 `StateGraph(AgentRuntimeState)`，agent 图字段保持不变。
+4. `set_cloud_enabled()` 改为每次调用都执行 `_rebuild_graphs()`：保证运行时修改 roles 等配置后，图始终与当前配置一致（重建仅构造图对象，不加载模型、不联网，成本极低）。
+
+#### 五、修复后验证（实测）
+
+- py_compile 通过（core/chat/webui 退出码 0）。
+- 混合三场景全部正常：纯本地（经 planner/executor/reviewer）；混合（planner 本地、executor 云端、reviewer 本地，banners 三节点正确）；全云端（三岗位均显示"（云端）"）。
+- 降级四种情况均正确回退 ChatOllama 不崩：空 key、缺 base_url、岗位不在 roles、开关关闭。
+- 本地回归与 Ollama OpenAI 兼容端点链路正常。
+
+#### 六、署名
+
+- 根因诊断与修复代码：匠师（JiangShi）诊断、谋士（MoShi）架构复核
+- 验证与本记录：匠师（JiangShi）
+
+---
+
 > 记录原则：所有条目以实际部署、文件与验证结果为准；后续每次改动应在此文件追加新版本，不回填、不臆测。
