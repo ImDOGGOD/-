@@ -32,6 +32,9 @@ models.yaml
 *.png
 *.jpg
 *.jpeg
+# docs 文档配图需要入库（例外）
+!docs/
+!docs/*.png
 
 # 系统杂项
 .DS_Store
