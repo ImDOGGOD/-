@@ -112,7 +112,7 @@ HTML = r"""<!doctype html>
 <body>
 <header>
   <div class="logo">AI</div>
-  <div class="title">足智多谋 <small>v""" + __version__ + r""" · 全部数据本机运行 · DeepSeek 出品</small></div>
+  <div class="title">足智多谋 <small>v""" + __version__ + r""" · 全部数据本机运行 · 谋士 出品</small></div>
   <div class="status"><span id="dot" class="dot"></span><span id="stat">检测中…</span></div>
 </header>
 <div id="chat"></div>

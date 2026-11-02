@@ -1,5 +1,4 @@
-# 本地多 Agent 系统配置模板
-# 用法：复制本文件为 models.yaml，再按需填入你自己的模型名与 API key。
+﻿# 本地多 Agent 系统配置（分工框架 v3：三模式分离）
 #   general = 通用问答；code = 代码辅助；agent = Agent 工具模式
 #   字段：model = Ollama 注册名（ollama list 可查；源文件见"模型仓库"目录）
 #         temperature = 生成温度（规划/审查宜低 0.1-0.3，执行宜高 0.4-0.7）
@@ -89,7 +88,7 @@ agent:
 # 联网搜索设置（工具 web_search 读取；更换服务商只需改这里）
 search:
   provider: bocha
-  api_key: 请填入你的博查API密钥
+  api_key: ""
   base_url: https://api.bochaai.com/v1/web-search
   count: 5
 

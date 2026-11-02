@@ -7,5 +7,5 @@
 - deepseek-r1-8b\   → deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-Q4_K_M.gguf
 - bge-m3\           → bge-m3-Q8_0.gguf（嵌入模型，知识库语义检索用）
 
-便携包只含 Modelfile（导入配方）。请把源电脑 F:\AI\local\模型仓库 里
+便携包只含 Modelfile（导入配方）。请把源电脑 F:\AI\local\model_warehouse 里
 对应子目录的 .gguf 文件拷贝到本目录的对应子目录后，再运行 安装部署.bat。

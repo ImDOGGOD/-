@@ -1,57 +1,77 @@
 @echo off
-chcp 936 >nul
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
-title 足智多谋 部署工具 v1.1.4
+title ZuZhiDuoMou Deploy v1.2.0
 echo ============================================
-echo  足智多谋 部署工具  v1.1.4
-echo  作者: DeepSeek (deepseek-v4-pro)
+echo   ZuZhiDuoMou  Deploy Tool  v1.2.0
+echo   Author: MoShi
 echo ============================================
 echo.
-echo [0/4] 环境自检...
+echo [0/4] Checking environment...
 where python >nul 2>nul
 if errorlevel 1 goto no_python
 python -c "import sys;sys.exit(0 if sys.version_info>=(3,11) else 1)" >nul 2>nul
 if errorlevel 1 goto no_python
 goto check_ollama
 :no_python
-echo [!] 未检测到可用的 Python（需要 3.11 及以上，推荐 3.13）。
-echo     尝试用 winget 自动安装 Python 3.13 ...
+echo [!] Python 3.11+ (3.13 recommended) not found.
+echo     Trying to install Python 3.13 with winget ...
 where winget >nul 2>nul
 if errorlevel 1 goto no_python_manual
 winget install --id Python.Python.3.13 -e --silent --accept-package-agreements --accept-source-agreements
 if errorlevel 1 goto no_python_manual
-echo [√] Python 3.13 已安装。请【重新双击本脚本】继续部署。
+echo [OK] Python 3.13 installed. Please double-click this script again.
 pause
 exit /b 0
 :no_python_manual
-echo [!] 无法自动安装（未找到 winget 或安装失败）。
-echo     请手动下载安装 Python 3.13，安装时务必勾选 Add python.exe to PATH：
+echo [!] Auto-install failed (no winget or install error).
+echo     Download and install Python 3.13 manually
+echo     (check "Add python.exe to PATH" during install):
 echo     https://www.python.org/ftp/python/3.13.5/python-3.13.5-amd64.exe
 start "" "https://www.python.org/ftp/python/3.13.5/python-3.13.5-amd64.exe"
-echo     已为你打开下载页。装好后重新双击本脚本。
+echo     Download page opened. Re-run this script after installing.
 pause
 exit /b 1
 :check_ollama
 where ollama >nul 2>nul
 if errorlevel 1 goto no_ollama
-echo [√] Python 与 Ollama 均已就绪。
-echo [1/4] 创建虚拟环境（如不存在）...
+echo [OK] Python and Ollama are ready.
+echo [1/4] Creating virtual environment (if missing)...
 if not exist ".venv\Scripts\python.exe" python -m venv .venv
 if errorlevel 1 (
-    echo [!] 创建虚拟环境失败，请确认已安装 Python 3.13 并加入 PATH
+    echo [!] Failed to create venv. Check Python installation and PATH.
     pause
     exit /b 1
 )
-echo [2/4] 安装依赖...
+echo [2/4] Installing dependencies...
+if not exist "models.yaml" copy "models.yaml.example" "models.yaml" >nul
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 (
-    echo [!] 依赖安装失败，请检查网络后重试
+    echo [!] pip install failed. Check network and retry.
     pause
     exit /b 1
 )
-echo [3/4] 检查 Ollama...
-echo [4/4] 从模型仓库导入六个模型...
-cd "模型仓库\qwen2.5-7b" && ollama create qwen2.5:7b -f Modelfile
+echo [3/4] Checking model files...
+if not exist "model_warehouse\qwen2.5-7b\qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf" (
+    echo [!] Model files not found in model_warehouse.
+    set /p DL=Download all 6 models now (about 13 GB)? [Y/N]: 
+    if /i "!DL!"=="Y" (
+        echo     Downloading... this takes a while. Log: gguf\download_all.log
+        ".venv\Scripts\python.exe" download_models.py
+        if errorlevel 1 (
+            echo [!] Download had errors. Re-run this script to resume.
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo     Skipped. You can also copy model_warehouse from another
+        echo     machine, or run download_models.py later.
+        pause
+        exit /b 1
+    )
+)
+echo [4/4] Importing six models into Ollama...
+cd "model_warehouse\qwen2.5-7b" && ollama create qwen2.5:7b -f Modelfile
 cd "..\spark-x2.5-4b" && ollama create spark-x2.5:4b -f Modelfile
 cd "..\internlm3-8b" && ollama create internlm3:8b -f Modelfile
 cd "..\qwen2.5-coder-7b" && ollama create qwen2.5-coder-7b:q4_k_m -f Modelfile
@@ -59,22 +79,22 @@ cd "..\deepseek-r1-8b" && ollama create deepseek-r1:8b -f Modelfile
 cd "..\bge-m3" && ollama create bge-m3 -f Modelfile
 cd ..
 echo.
-echo 部署完成！双击 启动.bat，选 [1] Web 界面 或 [2] 终端版。
+echo Deploy finished. Double-click the start bat to use the system.
 pause
 :no_ollama
 where winget >nul 2>nul
 if errorlevel 1 goto no_ollama_manual
-echo [!] 未检测到 Ollama，尝试用 winget 自动安装 ...
+echo [!] Ollama not found. Trying winget install ...
 winget install --id Ollama.Ollama -e --silent --accept-package-agreements --accept-source-agreements
 if errorlevel 1 goto no_ollama_manual
-echo [√] Ollama 已安装。请先从开始菜单运行一次 Ollama（右下角出现图标），
-echo     再重新双击本脚本继续。
+echo [OK] Ollama installed. Run Ollama once from the Start menu (tray icon),
+echo     then double-click this script again.
 pause
 exit /b 0
 :no_ollama_manual
-echo [!] 无法自动安装 Ollama。请手动下载安装并运行一次：
+echo [!] Auto-install failed. Download Ollama manually and run it once:
 echo     https://ollama.com/download/OllamaSetup.exe
 start "" "https://ollama.com/download/OllamaSetup.exe"
-echo     已为你打开下载页。装好并运行一次后，重新双击本脚本。
+echo     Download page opened. Re-run this script after installing.
 pause
 exit /b 1

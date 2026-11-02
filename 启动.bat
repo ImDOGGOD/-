@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title Local Multi-Agent System v1.1.4
+title ZuZhiDuoMou v1.2.0
 :menu
 color 0B
 cls
@@ -12,9 +12,9 @@ echo   \ \ \____\ \ \\ \ \_\ \\ \ \_\ \\ \ \     \ \ \____\ \ \_\ \
 echo    \ \_____\\ \_\\ \_____\\ \_____\\ \_\     \ \_____\\ \_____\
 echo     \/_____/ \/_/ \/_____/ \/_____/ \/_/      \/_____/ \/_____/
 echo.
-echo        ZuZhiDuoMou  (Zu Zhi Duo Mou)  v1.1.4
+echo        ZuZhiDuoMou  (Zu Zhi Duo Mou)  v1.2.0
 echo        Local Multi-Agent System
-echo        Author: DeepSeek (deepseek-v4-pro)
+echo        Author: MoShi
 echo.
 echo        [1] Web UI   - chat in your browser (recommended)
 echo        [2] Console  - chat in this window

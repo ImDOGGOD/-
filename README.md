@@ -1,6 +1,6 @@
-# 足智多谋 v1.1.4 —— 本地多模型多 Agent 系统 · 部署与打包说明
+# 足智多谋 v1.2.0 —— 本地多模型多 Agent 系统 · 部署与打包说明
 
-> 作者：DeepSeek（deepseek-v4-pro）　发布日期：2026-11-01
+> 作者：谋士（MoShi）　发布日期：2026-11-01
 
 ## 一、系统功能速览
 
@@ -18,13 +18,13 @@
 
 | 内容 | 位置 | 大小 |
 |---|---|---|
-| ① 便携包 | `发布\足智多谋_v1.1.4_便携包.zip` | 约 60 KB（代码+配置+文档+部署脚本） |
-| ② 模型仓库 | 本机 `F:\AI\local\模型仓库` 整个文件夹 | 约 13GB（6 个模型的 GGUF 源文件） |
+| ① 便携包 | `release\足智多谋_v1.2.0_便携包.zip` | 约 85 KB（代码+配置+文档+部署脚本） |
+| ② model_warehouse | 本机 `F:\AI\local\model_warehouse` 整个文件夹 | 约 13GB（6 个模型的 GGUF 源文件） |
 
 > 给别人部署时不用重新下载模型：把上面两样复制到 U 盘/共享盘即可（可双击 打包到U盘.bat 一键复制），
 > 对方只装 Python 和 Ollama 两个小程序，其余全部离线完成。
 > 注意：打包到U盘.bat 要在**原电脑**的 F:\AI\local 目录里运行（把文件复制到 U 盘），不要拷到 U 盘上执行。
-> **手头没有模型仓库、想在新电脑上在线下载模型？** → 见《无模型库部署教程.md》（全程魔搭下载，约 1 小时）。
+> **手头没有model_warehouse、想在新电脑上在线下载模型？** → 见《无模型库部署教程.md》（全程魔搭下载，约 1 小时）。
 
 ### 目标电脑部署步骤
 
@@ -40,23 +40,31 @@
 | .venv 虚拟环境 | 与机器路径绑定，目标机用 requirements.txt 重建 |
 | GIT 目录、Git 安装包、OllamaSetup.exe | 与运行无关，目标机自行安装 |
 | memory.db / knowledge.db | 个人数据，目标机首次运行自动重建（知识库需重新 /知识 add） |
-| Ollama 已注册的模型副本（.ollama\models） | 已包含在"模型仓库"源文件中，部署时重新导入 |
+| Ollama 已注册的模型副本（.ollama\models） | 已包含在"model_warehouse"源文件中，部署时重新导入 |
 
 ## 四、硬件要求
 
 - 推荐：NVIDIA 显卡 8GB 显存 + 32GB 内存（当前架构的验证配置）；
 - 最低：无独显也能跑（纯 CPU），但速度会慢一个数量级；
-- 磁盘：便携包约 60KB + 模型仓库约 13GB + 导入后 Ollama 副本约 16GB。
+- 磁盘：便携包约 60KB + model_warehouse约 13GB + 导入后 Ollama 副本约 16GB。
 
 ## 五、卸载
 
 双击项目目录里的 `一键卸载.bat`，输入 `YES` 确认：删除 Ollama 中足智多谋的 6 个模型 + 整个项目文件夹（不会卸载 Python 和 Ollama 本身）。输入其他任何内容则取消。
 
-## 六、常见问题
+## 六、从 GitHub 下载的注意事项
 
-- `ollama create` 报"找不到模型文件"：确认第 3 步的 GGUF 文件已放入 模型仓库 对应子目录；
+- GitHub 仓库只有代码与文档，**没有模型文件**（单文件 100MB 限制）。两条取模路径：
+  1. **一键下载器**（推荐）：`python download_models.py`，自动下载六个模型并归位（断点续传，日志在 gguf\download_all.log）；安装部署.bat 发现缺模型时也会直接问你"是否现在下载"；
+  2. 从网盘/U 盘拷贝 model_warehouse 文件夹；
+- 第一次运行：把 `models.yaml.example` 复制为 `models.yaml`（安装部署.bat 会自动做）；
+- 若你自行上传更新：保持 `.gitattributes` 里 `*.bat -text` 与 `*.gguf -text`，不要用编辑器改存 bat 文件。
+
+## 七、常见问题
+
+- `ollama create` 报"找不到模型文件"：确认第 3 步的 GGUF 文件已放入 model_warehouse 对应子目录；
 - 激活虚拟环境报"禁止运行脚本"：PowerShell 执行 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force`；
 - Web 界面打不开：确认 8765 端口没被占用；或改用终端版；
 - 想换模型 / 加工具 / 改模式：见 `系统说明书.md` 第 16、22 章。
 
-—— DeepSeek（deepseek-v4-pro），2026-11-01
+—— 谋士（MoShi），2026-11-01
