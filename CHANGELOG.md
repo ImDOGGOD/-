@@ -307,4 +307,29 @@
 
 ---
 
+## 发布通道治理：HTTPS 直连改 SSH 免密（2026-11-02）
+
+### 问题
+
+1. 直连 github.com:443 反复临时阻断：TCP 探测偶通，但实际 git push 多次在 21 秒后超时，无法可靠完成传输。
+2. 旧私钥 id_ed25519 为加密状态（含 passphrase，用户已无设置印象），非交互环境无法弹出密码输入，导致认证停在最后一步。
+
+### 处理（旧密钥保留不动）
+
+1. 新生成无密码密钥 id_ed25519_np（空 passphrase，已验证私钥头部为 none、无 bcrypt 加密）。
+2. 更新 ~/.ssh/config，IdentityFile 指向新密钥；通道仍为 ssh.github.com:443。
+3. 将新公钥添加到 GitHub 账号；远程由 HTTPS 切换为 SSH（git@github.com:ImDOGGOD/-.git）。
+
+### 验证
+
+1. 推送成功：2cc00fc..f2fb50a main -> main；GitHub API 核对本地与远程 SHA 完全一致。
+2. 重新下载远程实际 ZIP（50 个条目）：6 个 Modelfile、download_models.py、4 个 bat、LICENSE、.gitattributes/.gitignore 均在；权重与日志正确排除。
+3. ZIP 内 4 个 bat 全部为 CRLF、无孤立 LF，cmd 可正常解析；.gitattributes 二进制处理策略生效。
+
+### 署名
+
+- 本次通道治理、验证与记录：匠师（JiangShi）
+
+---
+
 > 记录原则：所有条目以实际部署、文件与验证结果为准；后续每次改动应在此文件追加新版本，不回填、不臆测。
