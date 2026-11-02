@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Continue"
 $base = "https://www.modelscope.cn/models/XHToken/Spark-X2.5-4B-GGUF/resolve/master"
-$outdir = "F:\AI\local\gguf"
-$log = "F:\AI\local\gguf\download_spark.log"
+$outdir = Join-Path $PSScriptRoot "gguf"
+$log = Join-Path $outdir "download_spark.log"
 New-Item -ItemType Directory -Force -Path $outdir | Out-Null
 
 $name = "Spark-X2.5-4B-Q4_K_M.gguf"

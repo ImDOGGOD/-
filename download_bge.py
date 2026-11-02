@@ -3,10 +3,12 @@ import os
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 URL = "https://www.modelscope.cn/models/Xorbits/bge-m3-GGUF/resolve/master/bge-m3-Q8_0.gguf"
-OUT = r"F:\AI\local\gguf\bge-m3-Q8_0.gguf"
-LOG = r"F:\AI\local\gguf\download_bge.log"
+_GGUF_DIR = Path(__file__).resolve().parent / "gguf"
+OUT = str(_GGUF_DIR / "bge-m3-Q8_0.gguf")
+LOG = str(_GGUF_DIR / "download_bge.log")
 SIZE = 634553856
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)

@@ -1,7 +1,7 @@
 """Agent 工具集：计算器、当前时间、文件读取/目录列表、联网搜索（博查，可换）。
 
 安全约定：
-- 文件类工具只允许访问 F:\\AI 目录内，单文件不超过 20 万字符；
+- 文件类工具只允许访问项目目录内，单文件不超过 20 万字符；
 - 计算器使用 AST 白名单，杜绝任意代码执行；
 - 联网搜索的 API key 只存在 models.yaml 的 search 段，可随时更换。
 """
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from langchain_core.tools import tool
 
-ALLOWED_ROOT = Path(r"F:\AI")
+ALLOWED_ROOT = Path(__file__).resolve().parent
 MAX_FILE_CHARS = 200_000
 
 _BIN_OPS = {
@@ -59,7 +59,7 @@ def current_time() -> str:
 
 
 def _safe_path(path: str) -> Path:
-    # 相对路径以 F:\AI 为基准，便于 Agent 用短路径访问项目文件
+    # 相对路径以项目根目录为基准，便于 Agent 用短路径访问项目文件
     p = Path(path).expanduser()
     if not p.is_absolute():
         p = ALLOWED_ROOT / p
@@ -71,7 +71,7 @@ def _safe_path(path: str) -> Path:
 
 @tool
 def read_file(path: str) -> str:
-    """读取文本文件内容（仅限 F:\\AI 目录内，文件不超过 20 万字符）。"""
+    """读取文本文件内容（仅限项目目录内，文件不超过 20 万字符）。"""
     try:
         p = _safe_path(path)
         if not p.is_file():
@@ -85,7 +85,7 @@ def read_file(path: str) -> str:
 
 @tool
 def list_directory(path: str) -> str:
-    """列出目录内容（仅限 F:\\AI 目录内，最多显示 100 项）。"""
+    """列出目录内容（仅限项目目录内，最多显示 100 项）。"""
     try:
         p = _safe_path(path)
         if not p.is_dir():

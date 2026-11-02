@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Continue"
 $base = "https://www.modelscope.cn/models/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/master"
-$outdir = "F:\AI\local\gguf"
-$log = "F:\AI\local\gguf\download.log"
+$outdir = Join-Path $PSScriptRoot "gguf"
+$log = Join-Path $outdir "download.log"
 New-Item -ItemType Directory -Force -Path $outdir | Out-Null
 
 $files = @(

@@ -3,10 +3,12 @@ import os
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 URL = "https://www.modelscope.cn/models/Shanghai_AI_Laboratory/internlm3-8b-instruct-GGUF/resolve/master/internlm3-8b-instruct-q4_k_m.gguf"
-OUT = r"F:\AI\local\gguf\internlm3-8b-instruct-q4_k_m.gguf"
-LOG = r"F:\AI\local\gguf\download_internlm3.log"
+_GGUF_DIR = Path(__file__).resolve().parent / "gguf"
+OUT = str(_GGUF_DIR / "internlm3-8b-instruct-q4_k_m.gguf")
+LOG = str(_GGUF_DIR / "download_internlm3.log")
 SIZE = 5358623936
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)

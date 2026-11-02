@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Continue"
 $base = "https://www.modelscope.cn/models/bartowski/deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-GGUF/resolve/master"
-$outdir = "F:\AI\local\gguf"
-$log = "F:\AI\local\gguf\download_r1.log"
+$outdir = Join-Path $PSScriptRoot "gguf"
+$log = Join-Path $outdir "download_r1.log"
 New-Item -ItemType Directory -Force -Path $outdir | Out-Null
 
 $name = "deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-Q4_K_M.gguf"

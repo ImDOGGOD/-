@@ -1,0 +1,11 @@
+本目录存放模型源文件（GGUF），一个模型一个子目录：
+
+- qwen2.5-7b\       → qwen2.5-7b-instruct-q4_k_m-00001/00002-of-00002.gguf
+- spark-x2.5-4b\    → Spark-X2.5-4B-Q4_K_M.gguf
+- internlm3-8b\     → internlm3-8b-instruct-q4_k_m.gguf
+- qwen2.5-coder-7b\ → qwen2.5-coder-7b-instruct-q4_k_m.gguf
+- deepseek-r1-8b\   → deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-Q4_K_M.gguf
+- bge-m3\           → bge-m3-Q8_0.gguf（嵌入模型，知识库语义检索用）
+
+便携包只含 Modelfile（导入配方）。请把源电脑 F:\AI\local\模型仓库 里
+对应子目录的 .gguf 文件拷贝到本目录的对应子目录后，再运行 安装部署.bat。

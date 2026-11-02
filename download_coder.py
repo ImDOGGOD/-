@@ -3,10 +3,12 @@ import os
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 URL = "https://www.modelscope.cn/models/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/master/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
-OUT = r"F:\AI\local\gguf\qwen2.5-coder-7b-instruct-q4_k_m.gguf"
-LOG = r"F:\AI\local\gguf\download_coder.log"
+_GGUF_DIR = Path(__file__).resolve().parent / "gguf"
+OUT = str(_GGUF_DIR / "qwen2.5-coder-7b-instruct-q4_k_m.gguf")
+LOG = str(_GGUF_DIR / "download_coder.log")
 SIZE = 4683073536
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
