@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title ZuZhiDuoMou v1.2.0
+title ZuZhiDuoMou v1.2.2
 :menu
 color 0B
 cls
@@ -12,7 +12,7 @@ echo   \ \ \____\ \ \\ \ \_\ \\ \ \_\ \\ \ \     \ \ \____\ \ \_\ \
 echo    \ \_____\\ \_\\ \_____\\ \_____\\ \_\     \ \_____\\ \_____\
 echo     \/_____/ \/_/ \/_____/ \/_____/ \/_/      \/_____/ \/_____/
 echo.
-echo        ZuZhiDuoMou  (Zu Zhi Duo Mou)  v1.2.0
+echo        ZuZhiDuoMou  (Zu Zhi Duo Mou)  v1.2.2
 echo        Local Multi-Agent System
 echo        Author: MoShi
 echo.
