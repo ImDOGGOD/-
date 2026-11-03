@@ -28,6 +28,7 @@ release/
 # 含真实密钥的本地配置（公开模板见 models.yaml.example）
 models.yaml
 models.yaml.bak
+models.yaml.tmp
 *.bak
 
 # 本地图片与临时素材

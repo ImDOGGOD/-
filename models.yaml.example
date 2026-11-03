@@ -1,6 +1,6 @@
-﻿# 本地多 Agent 系统配置（分工框架 v3：三模式分离）
+# 本地多 Agent 系统配置（分工框架 v3：三模式分离）
 #   general = 通用问答；code = 代码辅助；agent = Agent 工具模式
-#   字段：model = Ollama 注册名（ollama list 可查；源文件见"模型仓库"目录）
+#   字段：model = Ollama 注册名（ollama list 可查；源文件见"model_warehouse"目录）
 #         temperature = 生成温度（规划/审查宜低 0.1-0.3，执行宜高 0.4-0.7）
 #         num_ctx = 上下文窗口（token 数）
 #         num_predict = 单次生成上限（防止生成失控）
