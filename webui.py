@@ -4,6 +4,7 @@
 依赖：starlette / uvicorn / sse-starlette（已随 langgraph-api 安装）
 """
 import json
+import sys
 import threading
 import time
 import webbrowser
@@ -1618,7 +1619,19 @@ def _open_browser():
     webbrowser.open(f"http://{HOST}:{PORT}")
 
 
+def _port_in_use(host, port):
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(1)
+        return s.connect_ex((host, port)) == 0
+
+
 if __name__ == "__main__":
+    if _port_in_use(HOST, PORT):
+        print(f"端口 {PORT} 已被占用，可能已有一个 Web 界面在运行。")
+        print(f"直接打开浏览器访问 http://{HOST}:{PORT}")
+        _open_browser()
+        sys.exit(0)
     print(f"足智多谋 Web 界面 v{__version__} 已启动：http://{HOST}:{PORT}")
     print("浏览器未自动打开时，请手动访问上面的地址。Ctrl+C 退出。")
     threading.Timer(1.2, _open_browser).start()

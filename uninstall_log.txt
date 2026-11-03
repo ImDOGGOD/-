@@ -1,0 +1,5 @@
+==== ZuZhiDuoMou uninstall log ==== 
+date: 周二 2026/11/03 18:10:45.24 
+script: F:\AI\local\一键卸载.bat 
+ 
+cancelled by user 

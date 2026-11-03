@@ -14,7 +14,7 @@ python -c "import sys;sys.exit(0 if sys.version_info>=(3,11) else 1)" >nul 2>nul
 if errorlevel 1 goto no_python
 goto check_ollama
 :no_python
-echo [!] Python 3.11+ (3.13 recommended) not found.
+echo [WARN] Python 3.11+ (3.13 recommended) not found.
 echo     Trying to install Python 3.13 with winget ...
 where winget >nul 2>nul
 if errorlevel 1 goto no_python_manual
@@ -24,7 +24,7 @@ echo [OK] Python 3.13 installed. Please double-click this script again.
 pause
 exit /b 0
 :no_python_manual
-echo [!] Auto-install failed (no winget or install error).
+echo [WARN] Auto-install failed (no winget or install error).
 echo     Download and install Python 3.13 manually
 echo     (check "Add python.exe to PATH" during install):
 echo     https://www.python.org/ftp/python/3.13.5/python-3.13.5-amd64.exe
@@ -39,7 +39,7 @@ echo [OK] Python and Ollama are ready.
 echo [1/6] Creating virtual environment (if missing)...
 if not exist ".venv\Scripts\python.exe" python -m venv .venv
 if errorlevel 1 (
-    echo [!] Failed to create venv. Check Python installation and PATH.
+    echo [WARN] Failed to create venv. Check Python installation and PATH.
     pause
     exit /b 1
 )
@@ -47,7 +47,7 @@ echo [2/6] Installing dependencies...
 if not exist "models.yaml" copy "models.yaml.example" "models.yaml" >nul
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 (
-    echo [!] pip install failed. Check network and retry.
+    echo [WARN] pip install failed. Check network and retry.
     pause
     exit /b 1
 )
@@ -58,19 +58,19 @@ if errorlevel 1 (
     ".venv\Scripts\python.exe" -m pip install pypdf python-docx openpyxl langchain-mcp-adapters
 )
 ".venv\Scripts\python.exe" -c "import pypdf,docx,openpyxl,langchain_mcp_adapters;print('  OK  file + MCP libraries')" 2>nul
-if errorlevel 1 echo [!] Optional libraries missing - file/MCP features may be limited.
+if errorlevel 1 echo [WARN] Optional libraries missing - file/MCP features may be limited.
 echo.
 echo [5/6] Checking toolchain dependencies...
 where nvidia-smi >nul 2>nul
 if errorlevel 1 (
-    echo [!] nvidia-smi not found. GPU monitoring will not work.
+    echo [WARN] nvidia-smi not found. GPU monitoring will not work.
     echo     Please install NVIDIA driver from: https://www.nvidia.com/Download/index.aspx
 ) else (
     echo [OK] nvidia-smi found.
 )
 where node >nul 2>nul
 if errorlevel 1 (
-    echo [!] Node.js not found. Some MCP servers require Node.js.
+    echo [WARN] Node.js not found. Some MCP servers require Node.js.
     where winget >nul 2>nul
     if not errorlevel 1 (
         echo     Installing Node.js via winget...
@@ -84,7 +84,7 @@ if errorlevel 1 (
 )
 where npx >nul 2>nul
 if errorlevel 1 (
-    echo [!] npx not found. Some MCP servers require npx.
+    echo [WARN] npx not found. Some MCP servers require npx.
     where winget >nul 2>nul
     if not errorlevel 1 (
         echo     Installing npx via winget (bundled with Node.js)...
@@ -97,7 +97,7 @@ if errorlevel 1 (
 )
 where uvx >nul 2>nul
 if errorlevel 1 (
-    echo [!] uvx not found. Some MCP servers require uvx.
+    echo [WARN] uvx not found. Some MCP servers require uvx.
     where winget >nul 2>nul
     if not errorlevel 1 (
         echo     Installing uv via winget...
@@ -112,13 +112,13 @@ if errorlevel 1 (
 echo.
 echo [5/6] Checking model files...
 if not exist "model_warehouse\qwen2.5-7b\qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf" (
-    echo [!] Model files not found in model_warehouse.
+    echo [WARN] Model files not found in model_warehouse.
     set /p DL=Download all 6 core models now (about 13 GB)? [Y/N]: 
     if /i "!DL!"=="Y" (
         echo     Downloading... this takes a while. Log: gguf\download_all.log
         ".venv\Scripts\python.exe" download_models.py
         if errorlevel 1 (
-            echo [!] Download had errors. Re-run this script to resume.
+            echo [WARN] Download had errors. Re-run this script to resume.
             pause
             exit /b 1
         )
@@ -149,7 +149,7 @@ goto summary
 :dl_vision
 echo     Downloading vision model... log: gguf\download_all.log
 ".venv\Scripts\python.exe" download_models.py --with-vision
-if errorlevel 1 echo [!] Vision download failed. Re-run: python download_models.py --with-vision
+if errorlevel 1 echo [WARN] Vision download failed. Re-run: python download_models.py --with-vision
 if errorlevel 1 goto summary
 :import_vision
 echo     Importing vision model into Ollama...
@@ -178,7 +178,7 @@ pause
 :no_ollama
 where winget >nul 2>nul
 if errorlevel 1 goto no_ollama_manual
-echo [!] Ollama not found. Trying winget install ...
+echo [WARN] Ollama not found. Trying winget install ...
 winget install --id Ollama.Ollama -e --silent --accept-package-agreements --accept-source-agreements
 if errorlevel 1 goto no_ollama_manual
 echo [OK] Ollama installed. Run Ollama once from the Start menu (tray icon),
@@ -186,7 +186,7 @@ echo     then double-click this script again.
 pause
 exit /b 0
 :no_ollama_manual
-echo [!] Auto-install failed. Download Ollama manually and run it once:
+echo [WARN] Auto-install failed. Download Ollama manually and run it once:
 echo     https://ollama.com/download/OllamaSetup.exe
 start "" "https://ollama.com/download/OllamaSetup.exe"
 echo     Download page opened. Re-run this script after installing.
