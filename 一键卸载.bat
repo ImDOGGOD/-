@@ -1,13 +1,23 @@
 @echo off
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
-title ZuZhiDuoMou Uninstall v1.10.0
+title ZuZhiDuoMou Uninstall v2.0.0
+set LOG=%~dp0uninstall_log.txt
+echo ==== ZuZhiDuoMou uninstall log ==== > "%LOG%" 2>nul
+if not exist "%LOG%" set LOG=%TEMP%\zzdm_uninstall.log
+echo date: %date% %time% >> "%LOG%"
+echo script: %~f0 >> "%LOG%"
+echo. >> "%LOG%"
 echo ============================================
-echo   ZuZhiDuoMou  Uninstall Tool
+echo   ZuZhiDuoMou  Uninstall Tool  v2.0.0
 echo ============================================
 echo.
 if not exist "%~dp0core.py" (
-    echo [!] This folder does not look like the ZuZhiDuoMou project
-    echo     (core.py missing). Aborting to avoid deleting the wrong folder.
+    echo [!] core.py not found in THIS folder - aborting to protect files.
+    echo     Folder: %~dp0
+    echo     Tip: unzip the whole package FIRST, then run this bat from
+    echo          the extracted folder (never run it inside the ZIP).
+    echo core.py missing - aborted >> "%LOG%"
     pause
     exit /b 1
 )
@@ -17,10 +27,11 @@ echo   2. Delete this folder and everything inside it
 echo.
 echo Python and Ollama themselves will NOT be removed.
 echo.
-set /p OK=Type YES to uninstall, anything else to cancel: 
-if not "%OK%"=="YES" (
+set /p OK=Type YES (or Y) to uninstall, anything else to cancel: 
+if /i not "!OK!"=="YES" if /i not "!OK!"=="Y" (
     echo.
     echo Cancelled. Nothing was changed.
+    echo cancelled by user >> "%LOG%"
     pause
     exit /b 0
 )
@@ -28,21 +39,26 @@ echo.
 echo [1/2] Removing models from Ollama...
 where ollama >nul 2>nul
 if errorlevel 1 (
-    echo [!] ollama command not found, skipping model removal.
+    echo [!] ollama not found - skipping model removal.
+    echo ollama not found >> "%LOG%"
 ) else (
-    ollama rm spark-x2.5:4b
-    ollama rm qwen2.5:7b
-    ollama rm internlm3:8b
-    ollama rm qwen2.5-coder-7b:q4_k_m
-    ollama rm deepseek-r1:8b
-    ollama rm bge-m3
-    ollama rm qwen2.5vl:7b
+    ollama rm spark-x2.5:4b >> "%LOG%" 2>&1
+    ollama rm qwen2.5:7b >> "%LOG%" 2>&1
+    ollama rm internlm3:8b >> "%LOG%" 2>&1
+    ollama rm qwen2.5-coder-7b:q4_k_m >> "%LOG%" 2>&1
+    ollama rm deepseek-r1:8b >> "%LOG%" 2>&1
+    ollama rm bge-m3 >> "%LOG%" 2>&1
+    ollama rm qwen2.5vl:7b >> "%LOG%" 2>&1
     echo Models removed.
 )
 echo [2/2] Deleting project folder...
-cd ..
-start /b cmd /c "ping 127.0.0.1 -n 4 >nul & rmdir /s /q ""%~dp0"""
+echo deleting folder: %~dp0 >> "%LOG%"
 echo.
+echo If this window is still open after 10 seconds, delete the folder
+echo manually: %~dp0
+echo.
+cd ..
+start "" /b cmd /c "ping 127.0.0.1 -n 4 >nul & rd /s /q ""%~dp0"" & if exist ""%~dp0"" rd /s /q ""%~dp0"""
 echo Done. This window will close in 3 seconds.
 ping 127.0.0.1 -n 3 >nul
 exit /b 0

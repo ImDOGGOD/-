@@ -338,7 +338,7 @@ mcp:                   # MCP 工具接入（默认关闭）
 │   ├─ qwen2.5-7b/ qwen2.5-coder-7b/ spark-x2.5-4b/ qwen2.5-vl-7b/
 │   └─ import_model.ps1 等辅助文件
 ├─ docs/banner.png                     # 文档配图
-├─ 启动.bat / 安装部署.bat / 打包到U盘.bat / 一键卸载.bat
+├─ 启动.bat / 安装部署.bat / 打包到U盘.bat / 一键卸载.bat / 诊断自检.bat
 ├─ README.md / README.en.md / VERSION.md
 ├─ 系统说明书.md / 技术架构.md / 无模型库部署教程.md / CHANGELOG.md
 ├─ .gitattributes / .gitignore / LICENSE
@@ -370,7 +370,9 @@ mcp:                   # MCP 工具接入（默认关闭）
 
 ## 10. 卸载
 
-双击项目目录中的 **`一键卸载.bat`**，输入 `YES` 确认：删除 Ollama 中本系统的七个模型（含可选视觉模型）与整个项目文件夹，但**不会**卸载 Python 和 Ollama 本身；输入其他任何内容则取消。
+双击项目目录中的 **`一键卸载.bat`**，输入 `YES`（或 `Y`）确认：删除 Ollama 中本系统的七个模型（含可选视觉模型）与整个项目文件夹，但**不会**卸载 Python 和 Ollama 本身；输入其他任何内容则取消。过程会写入 `uninstall_log.txt`，便于排查。
+
+> 若安装/卸载脚本在他人电脑上"启动不了"：先完整解压（勿在 ZIP 内直接运行），仍异常则运行 `诊断自检.bat`，把 `zzdm_diag.txt` 发回即可定位是环境问题还是脚本问题。
 
 ---
 
@@ -382,6 +384,7 @@ mcp:                   # MCP 工具接入（默认关闭）
 | 激活虚拟环境报"禁止运行脚本" | 执行 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned -Force` |
 | Web 界面打不开 | 确认 8765 端口未被占用，或改用终端版 |
 | 双击 bat 报"不是内部或外部命令" | 确认仓库含 `.gitattributes`，不要用编辑器另存 bat |
+| 卸载 bat / 启动 bat 双击后一闪而过 | 大概率是"在 ZIP 预览里直接运行"或杀软拦截：先完整解压到本地文件夹，再右键"解除锁定"后运行；仍不行请运行 **`诊断自检.bat`** 并把生成的 `zzdm_diag.txt` 发给开发者 |
 | 模型生成失控、输出不停 | 检查 `core.py` 中各角色 `num_predict` 上限 |
 | 联网搜索无结果 | 确认 `models.yaml` 中 API 密钥正确 |
 
