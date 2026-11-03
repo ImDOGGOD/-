@@ -13,7 +13,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-required-orange.svg)](https://ollama.com/)
 [![100% Local](https://img.shields.io/badge/100%25-Local-success.svg)()
 
-Data stays on your machine · Six models working together · Three orchestration modes · Memory & knowledge base · Terminal & Web frontends
+Data stays on your machine · Seven models working together · Five orchestration modes · Memory & knowledge base · Plugins & MCP ecosystem · Terminal & Web frontends
 
 </div>
 
@@ -53,13 +53,15 @@ Two design principles guide the project:
 
 ## 2. Key Features
 
-### 2.1 Three Working Modes
+### 2.1 Five Working Modes
 
 | Mode | Trigger | Mechanism |
 |---|---|---|
 | General Q&A | Ask directly | Plan → Execute → Review loop; meta-questions bypass, simple questions answered fast |
 | Code assistance | `/code <question>` | Same loop with a code-specialized model and dedicated prompts |
-| Agent tools | `/agent <task>` | Tool-calling loop plus an independent review; can compute, read/write files, and search the web |
+| Agent tools | `/agent <task>` | Tool-calling loop plus an independent review; can compute, read/write files, search the web, and call MCP tools |
+| Image understanding | Web "Image" tab / `/tu <path>` | Local vision model (optional download) or a cloud VL API; drag-and-drop upload ≤8MB |
+| Copywriting | Web "Copywriting" tab / `/copy <brief>` | Plan → Write → Review, then copy-publish with human confirmation |
 
 ### 2.2 Long-Term Memory
 
@@ -69,21 +71,21 @@ Two design principles guide the project:
 
 ### 2.3 Knowledge Base (RAG)
 
-- Import local txt/md files and fetch web pages;
+- Import local txt/md/pdf/docx/xlsx files and fetch web pages (scanned PDFs go through image understanding);
 - The bge-m3 embedding model performs semantic retrieval and automatically falls back to keyword search when embeddings are unavailable;
 - Retrieved material is injected into answers with priority, and the review step verifies facts against it.
 
 ### 2.4 Two Frontends, One Orchestration
 
-- **Web UI**: dark theme, SSE streaming, mode switching, memory and knowledge-base shortcuts;
+- **Web UI**: monochrome minimal theme (customizable: 4 presets + background/accent colors, font size, corner radius), SSE streaming, five-mode switching, multi-session v2 (projects, rename, icons, pin, drag, fork, archive, tree view), conversation graph (custom palettes), notes (custom card style, export to memory), @-mentions, global search (Ctrl+K), prompt templates, memory/knowledge/plugin dashboards, image upload, export (Markdown/PDF), stats and model monitoring (live GPU bar);
 - **Terminal UI**: interactive command line with token-by-token streaming;
 - Both consume the same event generator, so logic changes happen in one place.
 
 ### 2.5 Engineering & Reproducibility
 
-- One-click deployment, one-click uninstall, USB packaging, and a six-model downloader;
+- One-click deployment, one-click uninstall, USB packaging, and a six-model downloader (with `--with-vision` for the optional vision model);
 - Built-in `.gitattributes` / `.gitignore` govern line endings, encodings, and sensitive files so anyone can download and deploy;
-- A plugin space lets you extend agent capabilities by writing a single function.
+- A three-tier plugin system: my_tools.py (single-function plugins) → the plugins/ directory (tools + message post-processors + frontend slots, hot-reload in the web UI) → an MCP client (connect any MCP server).
 
 ### 2.6 Cloud Hybrid Mode (New in v1.3.0)
 
@@ -98,6 +100,16 @@ Two design principles guide the project:
 - Every model-based Q&A is recorded in stats.db (not committed). Tokens are estimated locally with tiktoken, not actual billing, for order-of-magnitude reference only.
 - Ships with a minimal pytest regression suite (tests/, 12 cases) covering cloud config validation, cloud block replacement, config saving, and the calculator whitelist — pure logic that needs no GPU.
 - GitHub Actions CI: on push/PR it installs dependencies on Ubuntu + Python 3.13, generates models.yaml from the example, and runs pytest. Dev dependencies live in requirements-dev.txt.
+
+### 2.8 Image & File Recognition, Copywriting, Plugins, MCP, Monitoring, and Workbench (v1.5.0–v1.9.0)
+
+- **Image understanding** (v1.5.0): `vision` section with two engines — local qwen2.5vl:7b (`python download_models.py --with-vision`, 4.4GB + 1.3GB mmproj) or a cloud VL API; friendly hints when the model is missing; verified describing a screenshot's Chinese content in 17s.
+- **File recognition** (v1.5.0): pdf/docx/xlsx text extraction into the knowledge base (one-click import in the dashboard).
+- **Copywriting mode** (v1.6.0): plan → write → review with ad-law/sensitive-word checks; copy-publish with human confirmation.
+- **Plugin space v1** (v1.6.0): manifest + plugin.py + plugin.js with agent tools, message post-processor hooks, and header-button slots; official post_compress example.
+- **MCP client** (v1.7.0): connect any MCP server's tools via the `mcp` config section (off by default).
+- **Model monitoring** (v1.7.0): live Ollama status, loaded models, and a GPU memory bar refreshed every 5s.
+- **Workbench** (v1.8.0–v1.9.0): multi-session v2, notes + @-mentions, global search (Ctrl+K), prompt templates, and a conversation graph with customizable palettes.
 
 ---
 
@@ -141,6 +153,7 @@ The system uses six local models (including one embedding model), all Q4 quantiz
 | Ollama name | Source | Size | Role |
 |---|---|---|---|
 | qwen2.5:7b | Qwen2.5-7B-Instruct | 4.7GB | Planning/routing + Agent execution (native tool support) |
+| qwen2.5vl:7b (optional) | Qwen2.5-VL-7B | 4.4GB + 1.3GB mmproj | Image understanding (cloud VL when absent) |
 | internlm3:8b | InternLM3-8B-Instruct | 5.4GB | General execution + Agent review |
 | qwen2.5-coder-7b:q4_k_m | Qwen2.5-Coder-7B | 4.7GB | Code-mode execution (specialized) |
 | deepseek-r1:8b | DeepSeek-R1-0528-Qwen3-8B | 5.0GB | General/code review (reasoning model) |
@@ -324,7 +337,7 @@ Write a `@tool`-decorated function in `my_tools.py`, add it to the `TOOLS_EXTRA`
 
 ## 10. Uninstallation
 
-Double-click **`一键卸载.bat`** in the project folder and type `YES` to confirm: it removes the six models from Ollama and the entire project folder, but **does not** uninstall Python or Ollama themselves. Typing anything else cancels the operation.
+Double-click **`一键卸载.bat`** in the project folder and type `YES` to confirm: it removes the seven models (including the optional vision model) from Ollama and the entire project folder, but **does not** uninstall Python or Ollama themselves. Typing anything else cancels the operation.
 
 ---
 

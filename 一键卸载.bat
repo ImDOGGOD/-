@@ -12,7 +12,7 @@ if not exist "%~dp0core.py" (
     exit /b 1
 )
 echo This tool will:
-echo   1. Remove the 6 models registered in Ollama
+echo   1. Remove the registered models in Ollama (incl. optional vision)
 echo   2. Delete this folder and everything inside it
 echo.
 echo Python and Ollama themselves will NOT be removed.
@@ -36,6 +36,7 @@ if errorlevel 1 (
     ollama rm qwen2.5-coder-7b:q4_k_m
     ollama rm deepseek-r1:8b
     ollama rm bge-m3
+    ollama rm qwen2.5vl:7b
     echo Models removed.
 )
 echo [2/2] Deleting project folder...

@@ -13,7 +13,7 @@
 [![Ollama](https://img.shields.io/badge/Ollama-required-orange.svg)](https://ollama.com/)
 [![100% Local](https://img.shields.io/badge/100%25-Local-success.svg)()
 
-数据不出本机 · 六模型协作 · 三模式编排 · 记忆与知识库 · 终端与 Web 双前端
+数据不出本机 · 七模型协作 · 五模式编排 · 记忆与知识库 · 插件与 MCP 生态 · 终端与 Web 双前端
 
 </div>
 
@@ -53,13 +53,15 @@
 
 ## 2. 核心特性
 
-### 2.1 三种工作模式
+### 2.1 五种工作模式
 
 | 模式 | 触发方式 | 机制 |
 |---|---|---|
 | 通用问答 | 直接提问 | 规划 → 执行 → 审查 闭环；元问题直达、简单问题快答 |
 | 代码辅助 | `/code 问题` | 同一闭环，使用代码特化模型与专用提示词 |
-| Agent 工具 | `/agent 任务` | 工具调用循环 + 独立审查，可计算、读写文件、联网搜索 |
+| Agent 工具 | `/agent 任务` | 工具调用循环 + 独立审查，可计算、读写文件、联网搜索、调用 MCP 工具 |
+| 图片识别 | Web"图片"标签 / `/图 路径` | 本地视觉模型（可选下载）或云端 VL API，拖拽上传 ≤8MB |
+| 文案创作 | Web"文案"标签 / `/文案 需求` | 策划 → 创作 → 审查，人工确认后复制发布 |
 
 ### 2.2 长期记忆库
 
@@ -69,21 +71,21 @@
 
 ### 2.3 知识库（RAG）
 
-- 支持导入本地 txt/md 文件、抓取网页内容；
+- 支持导入本地 txt/md/pdf/docx/xlsx 文件、抓取网页内容（扫描版 PDF 用图片识别）；
 - bge-m3 嵌入模型做语义检索，嵌入不可用时自动降级为关键词检索；
 - 检索到的资料优先注入回答，审查环节据此核对事实。
 
 ### 2.4 双前端，同一套编排
 
-- **Web 界面**：深色主题、SSE 流式输出、三模式切换、记忆与知识库快捷命令；
+- **Web 界面**：黑白极简单色主题（可自定义：四套预设 + 背景/强调色/字号/圆角）、SSE 流式输出、五模式切换、**多会话 v2**（项目分组/命名/图标/置顶/拖拽/分叉/归档/结构树）、**对话图谱**（径向树+自定义配色）、**笔记**（卡片风格自定义、转存记忆）、**@引用**、**全局搜索**（Ctrl+K）、**提示词模板库**、记忆/知识/插件看板、图片拖拽上传、对话导出（Markdown/PDF）、运行统计与模型监控（GPU 显存实时条）；
 - **终端界面**：交互式命令行，逐字流式输出；
 - 两者消费同一个事件生成器，改逻辑只需动一处。
 
 ### 2.5 工程与可复刻性
 
-- 一键部署、一键卸载、U 盘打包、六模型一键下载器；
+- 一键部署、一键卸载、U 盘打包、六模型一键下载器（+`--with-vision` 可选视觉模型）；
 - 内置 `.gitattributes` / `.gitignore` 治理行尾编码与敏感文件，他人下载即可部署；
-- 插件化工具空间，写一个函数即可扩展 Agent 能力。
+- **插件空间三级体系**：my_tools.py（函数即插件）→ plugins/ 目录（工具 + 消息后处理器 + 前端插槽，拖文件夹即装、网页一键热重载）→ MCP 客户端（接入 MCP 生态任意服务器）。
 
 ### 2.6 云端混合模式（v1.3.0 新增）
 
@@ -99,6 +101,22 @@
 - 内置 pytest 最小回归用例（tests/，12 个），覆盖云端配置校验、cloud 段替换、配置保存、计算器白名单等不依赖 GPU 的纯逻辑。
 - GitHub Actions 持续集成：push/PR 自动在 Ubuntu + Python 3.13 装依赖、从 example 生成 models.yaml 并跑 pytest；开发依赖见 requirements-dev.txt。
 
+### 2.8 图片识别与文件识别（v1.5.0 新增）
+
+- **图片识别**：`vision` 段双引擎——本地 qwen2.5vl:7b（`python download_models.py --with-vision` 可选下载，主体 4.36GB + mmproj 1.26GB）或云端 VL API；未装模型时给出友好提示，不阻断任何功能；实测 17 秒完成截图的中文内容描述；
+- **文件识别**：pdf/docx/xlsx 提取文本入库（知识看板"导入到知识库"按钮），与知识库 RAG 无缝衔接。
+
+### 2.9 文案模式与插件空间（v1.6.0 新增）
+
+- **文案创作**：social 模式五岗位分工（策划→创作→审查），审查查广告法用语/敏感词/夸大宣传；人工确认后复制发布（平台自动运营与建号不在系统范围）；
+- **插件空间 v1**：manifest + plugin.py + plugin.js，支持 Agent 工具、消息后处理器钩子（压缩/翻译/转格式）、前端头部按钮插槽；官方示例 post_compress。
+
+### 2.10 MCP、监控与工作台（v1.7.0–v1.9.0 新增）
+
+- **MCP 客户端**：models.yaml 的 `mcp` 段接入任意 MCP 服务器工具（默认关闭，最大兼容面）；
+- **模型监控**：网页实时看 Ollama 状态、已加载模型、GPU 显存条/温度/负载（5 秒刷新）；
+- **多会话 v2**（分组/命名/图标/置顶/拖拽/继续/分叉/归档/结构树）、**笔记+@引用**、**全局搜索**（Ctrl+K）、**提示词模板库**、**对话图谱**（径向树 + 五套配色自定义）。
+
 ---
 
 ## 3. 系统架构
@@ -107,16 +125,16 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 前端层   webui.py（浏览器深色UI, SSE流式）  chat.py（终端）     │
+│ 前端层   webui.py（浏览器黑白极简UI, SSE流式）  chat.py（终端）  │
 ├─────────────────────────────────────────────────────────────┤
-│ 编排层   core.py：LangGraph 三张图                            │
-│          GENERAL_GRAPH / CODE_GRAPH（流水线）                 │
+│ 编排层   core.py：LangGraph 四张图                            │
+│          GENERAL / CODE / SOCIAL_GRAPH（流水线）              │
 │          AGENT_GRAPH（工具循环）                              │
-│          事件流 iter_ask / iter_agent（前端共享）             │
+│          事件流 iter_ask / iter_agent / iter_vision          │
 ├──────────────────┬──────────────────────────────────────────┤
 │ 数据层           │  工具层 tools.py（内置5工具）+ my_tools.py  │
-│ memory.py 记忆库  │       （插件空间，自动加载 TOOLS_EXTRA）     │
-│ kb.py 知识库 RAG │                                           │
+│ memory.py 记忆库  │  + plugins/（插件宿主 plugin_host）        │
+│ kb.py 知识库 RAG │  + mcp_client.py（MCP 生态接入）           │
 ├──────────────────┴──────────────────────────────────────────┤
 │ 模型层   Ollama 服务（127.0.0.1:11434）+ model_warehouse      │
 ├─────────────────────────────────────────────────────────────┤
@@ -124,7 +142,7 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**编排核心**由三张 LangGraph 状态图组成：
+**编排核心**由四张 LangGraph 状态图组成：
 
 - **流水线图**：`router`（规则预判元问题 + 规划模型分类）→ `executor`（执行）→ `reviewer`（审查），不通过则带修订意见回到执行环节，最多循环固定次数；
 - **Agent 图**：执行模型绑定工具，有工具调用则执行工具、无工具调用则进入审查；内置"工具风暴防线"，每轮只执行第一个工具调用，防止小模型生成上百个重复调用；
@@ -136,16 +154,17 @@
 
 ## 4. 模型清单
 
-系统共使用 6 个本地模型（含 1 个嵌入模型），全部为 Q4 量化，模型由 Ollama 按需串行加载，8GB 显存同一时刻只运行一个 7–9B 模型。
+系统共使用 7 个本地模型（含 1 个嵌入模型、1 个可选视觉模型），全部为 Q4 量化，模型由 Ollama 按需串行加载，8GB 显存同一时刻只运行一个 7–9B 模型。
 
 | Ollama 注册名 | 来源 | 大小 | 岗位 |
 |---|---|---|---|
 | qwen2.5:7b | Qwen2.5-7B-Instruct | 4.7GB | 规划/路由 + Agent 执行（原生支持工具） |
-| internlm3:8b | InternLM3-8B-Instruct | 5.4GB | 通用执行 + Agent 审查 |
+| internlm3:8b | InternLM3-8B-Instruct | 5.4GB | 通用/文案执行 + Agent 审查 |
 | qwen2.5-coder-7b:q4_k_m | Qwen2.5-Coder-7B | 4.7GB | 代码模式执行（特化） |
-| deepseek-r1:8b | DeepSeek-R1-0528-Qwen3-8B | 5.0GB | 通用/代码审查（推理模型） |
+| deepseek-r1:8b | DeepSeek-R1-0528-Qwen3-8B | 5.0GB | 通用/代码/文案审查（推理模型） |
 | spark-x2.5:4b | Spark-X2.5-4B | 2.6GB | 备用 |
 | bge-m3 | BAAI bge-m3 | 634MB | 知识库嵌入（语义检索） |
+| qwen2.5vl:7b（可选） | Qwen2.5-VL-7B | 4.4GB + 1.3GB mmproj | 图片识别（未装可用云端 VL） |
 
 **显存账**：模型权重 ≤5.4GB + 8K 上下文 KV 缓存（8B 约 1.2GB）≈ 6.6GB < 8GB，可在 8GB 显存内运行。
 
@@ -195,7 +214,7 @@ copy models.yaml.example models.yaml
 
 ### 5.4 获取模型的两条路径
 
-1. **一键下载器**（推荐）：`python download_models.py`，自动从魔搭 ModelScope 下载六个模型并归位到 `model_warehouse`，断点续传、日志在 `gguf\download_all.log`；
+1. **一键下载器**（推荐）：`python download_models.py`，自动从魔搭 ModelScope 下载六个模型并归位到 `model_warehouse`，断点续传、日志在 `gguf\download_all.log`；加 `--with-vision` 可同时下载可选视觉模型 qwen2.5vl:7b（主体 + mmproj）；
 2. **离线拷贝**：从已有机器用 `打包到U盘.bat` 复制 `model_warehouse` 文件夹，无需重新下载。
 
 > 手头没有模型库、想在新电脑上在线下载的完整图文步骤，见 [无模型库部署教程.md](无模型库部署教程.md)。
@@ -210,7 +229,9 @@ copy models.yaml.example models.yaml
 |---|---|
 | 直接提问 | 进入通用问答模式 |
 | `/code 问题`（`/代码`） | 代码辅助模式 |
-| `/agent 任务`（`/智能体`） | Agent 工具模式，可计算/读文件/联网搜索 |
+| `/agent 任务`（`/智能体`） | Agent 工具模式，可计算/读文件/联网搜索/调用 MCP 工具 |
+| `/图 <图片路径>`（`/看图`） | 图片识别（本地视觉模型或云端 VL） |
+| `/文案 需求`（`/social`） | 文案创作模式（起草 + 人工确认复制） |
 | `/记住 内容`（`/remember`） | 手动存入长期记忆 |
 | `/回忆 关键词`（`/recall`） | 检索记忆与历史问答 |
 | `/忘记 编号`（`/forget`） | 删除一条记忆 |
@@ -221,13 +242,15 @@ copy models.yaml.example models.yaml
 ### 6.2 知识库命令
 
 ```
-/知识 add <文件路径>      导入 txt/md 文件（也可用 添加/导入）
+/知识 add <文件路径>      导入 txt/md/pdf/docx/xlsx 文件（也可用 添加/导入）
 /知识 fetch <网址>        抓取网页内容入库（也可用 下载）
 /知识 查 <关键词>         语义检索片段（也可用 search/搜索）
 /知识 列表                查看条目数与来源
 /知识 删除 <编号>          删除片段
 /知识 清空                清空知识库
 ```
+
+> Web 端看板"知识库"页还提供一键文件导入按钮（≤30MB）。
 
 ### 6.3 内置工具（Agent 模式）
 
@@ -265,6 +288,21 @@ cloud:
   roles: [planner, executor, reviewer]
 ```
 
+图片识别与 MCP 接入也在同一文件配置：
+
+```yaml
+vision:                # 图片识别：本地 VL 或云端 VL
+  model: qwen2.5vl:7b
+  provider: local      # local = Ollama；cloud = 云端 VL（填 cloud_* 三项）
+
+mcp:                   # MCP 工具接入（默认关闭）
+  enabled: false
+  servers:
+    # - name: fetch
+    #   command: uvx
+    #   args: [mcp-server-fetch]
+```
+
 ### 7.2 行尾与编码治理
 
 - `.gitattributes` 规定 `*.bat` / `*.cmd` 按二进制处理（`-text`），Git 绝不改动其编码与换行，避免他人下载后 cmd 解析失败；
@@ -283,13 +321,16 @@ cloud:
 ```
 足智多谋/
 ├─ core.py / chat.py / webui.py        # 编排核心 / 终端入口 / Web 入口
-├─ tools.py / my_tools.py              # 内置工具 / 插件空间
+├─ tools.py / my_tools.py              # 内置工具 / 简单插件空间
+├─ plugin_host.py / plugins/           # 插件宿主 / 插件目录（工具+后处理器+前端插槽）
+├─ mcp_client.py                       # MCP 客户端（接入 MCP 生态工具）
+├─ stats.py                            # 运行统计（耗时/来源/命中率/token 估算）
 ├─ memory.py / kb.py                   # 长期记忆 / 知识库 RAG
-├─ download_models.py                  # 六模型一键下载器
+├─ download_models.py                  # 六模型一键下载器（--with-vision 可选视觉模型）
 ├─ models.yaml.example / requirements.txt
 ├─ model_warehouse/                    # 模型源文件与导入配方（权重不入库）
 │   ├─ bge-m3/ deepseek-r1-8b/ internlm3-8b/
-│   ├─ qwen2.5-7b/ qwen2.5-coder-7b/ spark-x2.5-4b/
+│   ├─ qwen2.5-7b/ qwen2.5-coder-7b/ spark-x2.5-4b/ qwen2.5-vl-7b/
 │   └─ import_model.ps1 等辅助文件
 ├─ docs/banner.png                     # 文档配图
 ├─ 启动.bat / 安装部署.bat / 打包到U盘.bat / 一键卸载.bat
@@ -324,7 +365,7 @@ cloud:
 
 ## 10. 卸载
 
-双击项目目录中的 **`一键卸载.bat`**，输入 `YES` 确认：删除 Ollama 中本系统的六个模型与整个项目文件夹，但**不会**卸载 Python 和 Ollama 本身；输入其他任何内容则取消。
+双击项目目录中的 **`一键卸载.bat`**，输入 `YES` 确认：删除 Ollama 中本系统的七个模型（含可选视觉模型）与整个项目文件夹，但**不会**卸载 Python 和 Ollama 本身；输入其他任何内容则取消。
 
 ---
 
@@ -356,6 +397,6 @@ cloud:
 
 仓库地址：https://github.com/ImDOGGOD/-
 
-—— 足智多谋团队，2026-11-02
+—— 足智多谋团队，2026-11-03
 
 </div>
