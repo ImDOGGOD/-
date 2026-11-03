@@ -635,20 +635,22 @@ function moveBefore(fromId,toId){
 }
 // 会话上下文菜单
 let menuFor=null;
-function openMenu(id,x,y){menuFor=id;const m=$('ctxmenu');m.innerHTML='';
- const target=id;
- const items=[
-  ['置顶 / 取消置顶',()=>{const s=sessions.find(v=>v.id===target);if(s){s.pinned=!s.pinned;saveSessions();renderSessions();}}],
-  ['重命名',()=>renameSession(target)],
-  ['标记图标',()=>cycleIcon(target)],
-  ['在新对话中继续',()=>{const s=sessions.find(v=>v.id===target);if(s)newSession({html:s.html,group:s.group});}],
-  ['分叉对话',()=>{const s=sessions.find(v=>v.id===target);if(s)newSession({html:s.html,parent:s.id,group:s.group,icon:s.icon});}],
-  ['移动到项目…',()=>{const g=prompt('项目名（例如：工作 / 学习 / 灵感）');if(g&&g.trim()){const s=sessions.find(v=>v.id===target);if(s){s.group=g.trim().slice(0,20);saveSessions();renderSessions();}}}],
-  ['归档',()=>{const s=sessions.find(v=>v.id===target);if(s){s.archived=true;saveSessions();renderSessions();}}],
-  ['恢复（取消归档）',()=>{const s=sessions.find(v=>v.id===target);if(s){s.archived=false;saveSessions();renderSessions();}}],
-  ['删除',()=>delSession(target)],
- ];
- items.forEach(([label,fn])=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{closeMenu();fn();};m.appendChild(b);});
+function openMenu(id,x,y){
+  const target = id;  // 立即捕获目标ID，避免闭包问题
+  menuFor = id;
+  const m=$('ctxmenu');m.innerHTML='';
+  const items=[
+    ['置顶 / 取消置顶',()=>{const s=sessions.find(v=>v.id===target);if(s){s.pinned=!s.pinned;saveSessions();renderSessions();}}],
+    ['重命名',()=>renameSession(target)],
+    ['标记图标',()=>cycleIcon(target)],
+    ['在新对话中继续',()=>{const s=sessions.find(v=>v.id===target);if(s)newSession({html:s.html,group:s.group});}],
+    ['分叉对话',()=>{const s=sessions.find(v=>v.id===target);if(s)newSession({html:s.html,parent:s.id,group:s.group,icon:s.icon});}],
+    ['移动到项目…',()=>{const g=prompt('项目名（例如：工作 / 学习 / 灵感）');if(g&&g.trim()){const s=sessions.find(v=>v.id===target);if(s){s.group=g.trim().slice(0,20);saveSessions();renderSessions();}}],
+    ['归档',()=>{const s=sessions.find(v=>v.id===target);if(s){s.archived=true;saveSessions();renderSessions();}}],
+    ['恢复（取消归档）',()=>{const s=sessions.find(v=>v.id===target);if(s){s.archived=false;saveSessions();renderSessions();}}],
+    ['删除',()=>delSession(target)],
+  ];
+  items.forEach(([label,fn])=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{closeMenu();fn();};m.appendChild(b);});
  m.style.display='block';
  m.style.left=Math.min(x,window.innerWidth-180)+'px';
  m.style.top=Math.min(y,window.innerHeight-items.length*32-24)+'px';
