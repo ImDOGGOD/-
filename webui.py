@@ -20,6 +20,7 @@ from core import (
     get_titles,
     iter_agent,
     iter_ask,
+    save_cloud_config,
     set_cloud_enabled,
 )
 from sse_starlette.sse import EventSourceResponse
@@ -121,6 +122,26 @@ HTML = r"""<!doctype html>
   #reset{margin-top:14px;width:100%;border:1px solid var(--line);background:transparent;color:var(--dim);
     padding:7px 0;border-radius:999px;cursor:pointer;font-size:12px;letter-spacing:.08em;}
   #reset:hover{color:var(--text);border-color:var(--accent);}
+  #cpanel{position:fixed;top:64px;right:28px;width:320px;background:var(--surface);
+    border:1px solid var(--line);border-radius:16px;padding:18px;display:none;z-index:100;
+    box-shadow:0 18px 50px rgba(0,0,0,.55);}
+  #cpanel.open{display:block;animation:fade .25s ease;}
+  #cpanel h3{font-size:11px;letter-spacing:.14em;color:var(--dim);font-weight:500;margin:14px 0 8px;}
+  #cpanel h3:first-child{margin-top:0;}
+  #cpanel label{display:block;font-size:11px;color:var(--dim);margin:10px 0 5px;letter-spacing:.04em;}
+  #cpanel input[type=text],#cpanel input[type=password],#cpanel input[type=number]{
+    width:100%;border-radius:9px;padding:8px 10px;font-size:12.5px;background:#0d0d0d;
+    border:1px solid var(--line);color:var(--text);font-family:inherit;outline:none;}
+  #cpanel input:focus{border-color:var(--accent);}
+  .croles{display:flex;gap:14px;margin:6px 0;}
+  .croles label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);margin:0;cursor:pointer;}
+  .croles input{accent-color:var(--accent);width:14px;height:14px;}
+  .cnum{display:flex;gap:10px;}
+  .cnum div{flex:1;}
+  #csave{margin-top:16px;width:100%;border:none;background:var(--accent);color:var(--accent-text);
+    padding:9px 0;border-radius:999px;cursor:pointer;font-size:12.5px;font-weight:600;letter-spacing:.1em;}
+  #cmsg{margin-top:10px;font-size:11.5px;line-height:1.5;min-height:16px;word-break:break-word;}
+  #cmsg.ok{color:var(--text);} #cmsg.err{color:#e08a8a;}
   @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
   ::-webkit-scrollbar{width:8px;} ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:6px;}</style>
 <script>try{const o=JSON.parse(localStorage.getItem('zzdm-theme'));if(o&&o.vars){const r=document.documentElement.style;Object.keys(o.vars).forEach(k=>r.setProperty(k,o.vars[k]));}}catch(e){}</script>
@@ -130,6 +151,7 @@ HTML = r"""<!doctype html>
   <div class="logo">谋</div>
   <div class="title">足智多谋 <small>v""" + __version__ + r""" · 全部数据本机运行 · 谋士 出品</small></div>
   <button class="tbtn" id="cbtn">云端：关</button>
+  <button class="tbtn" id="cset">云端设置</button>
   <button class="tbtn" id="tbtn">主题</button>
   <div class="status"><span id="dot" class="dot"></span><span id="stat">检测中…</span></div>
 </header>
@@ -162,6 +184,27 @@ HTML = r"""<!doctype html>
   <div class="row"><span>字号 <b id="v-fs"></b></span><input type="range" id="r-fs" min="12" max="18" step="1"></div>
   <div class="row"><span>圆角 <b id="v-ra"></b></span><input type="range" id="r-ra" min="0" max="24" step="2"></div>
   <button id="reset">恢复默认（黑白极简）</button>
+</div>
+<div id="cpanel">
+  <h3>云端大模型配置</h3>
+  <label>接口地址 base_url</label>
+  <input type="text" id="cc-url" placeholder="https://api.deepseek.com">
+  <label>密钥 api_key <span style="float:right;cursor:pointer;" id="cc-eye">显示</span></label>
+  <input type="password" id="cc-key" placeholder="sk-...">
+  <label>模型名 model</label>
+  <input type="text" id="cc-model" placeholder="deepseek-chat">
+  <h3>走云端的岗位</h3>
+  <div class="croles">
+    <label><input type="checkbox" value="planner">规划</label>
+    <label><input type="checkbox" value="executor">执行</label>
+    <label><input type="checkbox" value="reviewer">审查</label>
+  </div>
+  <div class="cnum">
+    <div><label>温度</label><input type="number" id="cc-temp" step="0.1" min="0" max="2"></div>
+    <div><label>长度上限</label><input type="number" id="cc-np" step="1" min="1" max="32768"></div>
+  </div>
+  <button id="csave">保存配置</button>
+  <div id="cmsg"></div>
 </div>
 <script>
 let mode='general', cur=null, busy=false;
@@ -276,6 +319,49 @@ $('cbtn').onclick=async()=>{
   else{const r=await fetch('/api/cloud');renderCloud(await r.json());}
  }catch(e){}
 })();
+// 云端配置面板（v1.3.1）
+function fillCloudForm(st){
+ $('cc-url').value=st.base_url||'';
+ $('cc-model').value=st.model||'';
+ $('cc-key').value='';
+ $('cc-key').type='password'; $('cc-eye').textContent='显示';
+ $('cc-key').placeholder=st.configured?'已配置密钥，留空保持不变':'未配置，填入 sk-...';
+ document.querySelectorAll('#cpanel .croles input').forEach(cb=>{
+  cb.checked=(st.roles||[]).includes(cb.value);});
+ $('cc-temp').value=(st.temperature!==undefined)?st.temperature:0.3;
+ $('cc-np').value=(st.num_predict!==undefined)?st.num_predict:4096;
+ $('cmsg').textContent=''; $('cmsg').className='';
+}
+$('cset').onclick=async()=>{
+ const panel=$('cpanel');
+ const willOpen=!panel.classList.contains('open');
+ $('panel').classList.remove('open');
+ panel.classList.toggle('open',willOpen);
+ if(willOpen){try{const r=await fetch('/api/cloud');fillCloudForm(await r.json());}catch(e){}}
+};
+$('cc-eye').onclick=()=>{
+ const k=$('cc-key');
+ if(k.type==='password'){k.type='text';$('cc-eye').textContent='隐藏';}
+ else{k.type='password';$('cc-eye').textContent='显示';}
+};
+$('csave').onclick=async()=>{
+ const payload={
+  base_url:$('cc-url').value,
+  model:$('cc-model').value,
+  roles:Array.from(document.querySelectorAll('#cpanel .croles input:checked')).map(x=>x.value),
+  temperature:$('cc-temp').value,
+  num_predict:$('cc-np').value
+ };
+ if($('cc-key').value.trim()!==''){payload.api_key=$('cc-key').value;}
+ $('cmsg').className=''; $('cmsg').textContent='保存中…';
+ try{
+  const r=await fetch('/api/cloud/config',{method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify(payload)});
+  const d=await r.json();
+  if(d.ok){$('cmsg').className='ok';$('cmsg').textContent='已保存并生效';renderCloud(d);fillCloudForm(d);}
+  else{$('cmsg').className='err';$('cmsg').textContent='保存失败：'+(d.error||'未知错误');}
+ }catch(e){$('cmsg').className='err';$('cmsg').textContent='网络错误：'+String(e);}
+};
 ping(); setInterval(ping,30000);
 </script>
 </body></html>"""
@@ -367,11 +453,22 @@ async def api_cloud(request):
     return HTMLResponse(json.dumps({"ok": True, **cloud_status()}, ensure_ascii=False), media_type="application/json")
 
 
+async def api_cloud_config(request):
+    """保存云端配置（POST）：入参为 cloud 字段子集，校验后写回 models.yaml。"""
+    try:
+        body = await request.json()
+        status = save_cloud_config(body)
+    except Exception as e:
+        return HTMLResponse(json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False), media_type="application/json")
+    return HTMLResponse(json.dumps({"ok": True, **status}, ensure_ascii=False), media_type="application/json")
+
+
 routes = [
     Route("/", homepage),
     Route("/api/ping", api_ping),
     Route("/api/chat", api_chat, methods=["POST"]),
     Route("/api/cloud", api_cloud, methods=["GET", "POST"]),
+    Route("/api/cloud/config", api_cloud_config, methods=["POST"]),
 ]
 app = Starlette(routes=routes)
 

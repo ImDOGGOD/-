@@ -6,6 +6,7 @@
 
 多轮上下文与长期记忆由调用方通过 history / memory_ctx 传入。
 """
+import os
 import re
 import sys
 import urllib.error
@@ -24,7 +25,7 @@ from langgraph.graph.message import add_messages
 BASE_DIR = Path(__file__).resolve().parent
 OLLAMA_URL = "http://127.0.0.1:11434"
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 __author__ = "谋士 (MoShi)"
 
 # 元问题关键词（中英文，规则预判，零成本直达编排层）
@@ -601,6 +602,8 @@ def cloud_status():
         "base_url": cloud.get("base_url", ""),
         "model": cloud.get("model", ""),
         "roles": list(cloud.get("roles") or []),
+        "temperature": cloud.get("temperature", 0.3),
+        "num_predict": cloud.get("num_predict", 4096),
     }
 
 
@@ -612,3 +615,104 @@ def get_graph(mode):
 def get_titles(mode):
     """前端统一入口：返回当前（重建后的）标题。"""
     return {"general": GENERAL_TITLES, "code": CODE_TITLES, "agent": AGENT_TITLES}[mode]
+
+
+# 云端配置面板：可编辑字段与合法岗位（v1.3.1 网页配置）
+_CLOUD_ROLE_KEYS = ("planner", "executor", "reviewer")
+_CLOUD_EDITABLE = ("provider", "base_url", "api_key", "model",
+                   "roles", "temperature", "num_predict")
+
+
+def _validate_cloud_updates(updates):
+    """校验并归一化前端提交的 cloud 字段；非法输入直接抛 ValueError。"""
+    if not isinstance(updates, dict):
+        raise ValueError("配置内容必须是对象")
+    clean = {}
+    for key in _CLOUD_EDITABLE:
+        if key not in updates:
+            continue
+        val = updates[key]
+        if key in ("provider", "base_url", "api_key", "model"):
+            if not isinstance(val, str):
+                raise ValueError(f"{key} 必须是文本")
+            clean[key] = val.strip()
+        elif key == "roles":
+            if not isinstance(val, list):
+                raise ValueError("roles 必须是列表")
+            roles = []
+            for item in val:
+                if item not in _CLOUD_ROLE_KEYS:
+                    raise ValueError(f"非法岗位：{item}")
+                if item not in roles:
+                    roles.append(item)
+            clean[key] = roles
+        elif key == "temperature":
+            try:
+                num = float(val)
+            except (TypeError, ValueError):
+                raise ValueError("temperature 必须是数字")
+            if not 0.0 <= num <= 2.0:
+                raise ValueError("temperature 允许范围 0 到 2")
+            clean[key] = num
+        elif key == "num_predict":
+            try:
+                num = int(val)
+            except (TypeError, ValueError):
+                raise ValueError("num_predict 必须是整数")
+            if not 1 <= num <= 32768:
+                raise ValueError("num_predict 允许范围 1 到 32768")
+            clean[key] = num
+    return clean
+
+
+def _replace_cloud_block(text, new_cloud):
+    """仅替换顶层 cloud 段，其余内容（含注释与 role 块）原样保留。"""
+    lines = text.splitlines(keepends=True)
+    start = None
+    for i, line in enumerate(lines):
+        if re.match(r"^cloud:\s*(#.*)?$", line):
+            start = i
+            break
+    if start is None:
+        raise ValueError("models.yaml 中未找到 cloud 段")
+    end = start + 1
+    while end < len(lines):
+        line = lines[end]
+        # cloud 段内容＝空行或缩进行；遇到行首非空白（注释/新键）即结束
+        if line.strip() == "" or line[0] in (" ", "\t"):
+            end += 1
+        else:
+            break
+    block = yaml.safe_dump({"cloud": new_cloud}, allow_unicode=True,
+                           sort_keys=False, default_flow_style=False)
+    if not block.endswith("\n"):
+        block += "\n"
+    block += "\n"  # 段后保留一个空行分隔
+    return "".join(lines[:start]) + block + "".join(lines[end:])
+
+
+def save_cloud_config(updates):
+    """保存网页提交的云端配置：校验 → 备份 → 仅替换 cloud 段 → 更新内存 → 重建图。"""
+    global cfg
+    path = BASE_DIR / "models.yaml"
+    if not path.exists():
+        raise FileNotFoundError("models.yaml 不存在，无法保存")
+    changes = _validate_cloud_updates(updates)
+    new_cloud = dict(_cloud_section())
+    new_cloud.update(changes)
+    # enabled 是"启动默认值"，由开关与浏览器 localStorage 独立管理，
+    # 保存其他配置时不覆盖它（changes 不含 enabled，故保留文件原值）
+
+    raw = path.read_text(encoding="utf-8")
+    new_text = _replace_cloud_block(raw, new_cloud)
+
+    # 先备份原文件，再原子写入（临时文件 + os.replace）
+    (BASE_DIR / "models.yaml.bak").write_text(raw, encoding="utf-8")
+    tmp = BASE_DIR / "models.yaml.tmp"
+    tmp.write_text(new_text, encoding="utf-8")
+    os.replace(tmp, path)
+
+    # 更新内存配置并重建图（重建只构造图对象，不加载模型、不联网）
+    cfg["cloud"] = new_cloud
+    _rebuild_graphs()
+    return cloud_status()

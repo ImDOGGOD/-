@@ -90,6 +90,7 @@ Two design principles guide the project:
 - The client provides a "Enable cloud model" toggle: once on, the selected roles (planner/executor/reviewer) use an OpenAI-compatible cloud model, while the remaining roles stay on local Ollama — hence "hybrid".
 - Customizable base_url/api_key/model/roles; works with DeepSeek, Qwen (DashScope), Zhipu GLM, OpenAI, etc. Off by default and fully local; the API key is never committed.
 - Falls back to local automatically when no key is set or the toggle is off, without errors. Tested end-to-end with a real DeepSeek key for both full-cloud and hybrid Q&A.
+- Since v1.3.1, a "Cloud Settings" web panel lets you edit base_url/key/model/roles/temperature/max length directly in the browser, with server-side validation, automatic backup (models.yaml.bak), no key echo (leave blank to keep it), and only the cloud block is changed.
 
 ---
 

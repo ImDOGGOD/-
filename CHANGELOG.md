@@ -457,4 +457,44 @@
 
 ---
 
+## v1.3.1（2026-11-03）—— Web 云端配置面板（网页直接编辑，不改写其余配置）
+
+### 背景与目标
+
+- 用户要求：在不复杂、不大幅改变 Web 代码健壮性的前提下，把云端"自定义配置"从手动编辑 models.yaml 升级为网页面板操作。
+- 设计原则：纯增量、不改动现有函数逻辑；只改 cloud 段、保留其余段与注释；服务端强校验；写文件先备份、原子替换；密钥不回显。
+
+### 变更清单（依据实际代码）
+
+1. core.py：
+   - 新增 `save_cloud_config()`、`_validate_cloud_updates()`、`_replace_cloud_block()`；
+   - 文本块级替换：行级定位顶层 `cloud:` 段，仅替换该段，其余段（general/code/agent/search/memory/knowledge）与全部注释、role 块原样保留；
+   - 写入前备份 models.yaml.bak，再写 .tmp 并 `os.replace` 原子替换；更新内存 cfg 后 `_rebuild_graphs()`；
+   - `cloud_status()` 增加返回 temperature、num_predict。
+2. webui.py：
+   - header 新增"云端设置"按钮与独立浮动面板 `#cpanel`，可编辑 base_url/api_key/model/roles（复选框）/temperature/num_predict；
+   - 新增 `POST /api/cloud/config` 路由与 handler；面板样式复用现有视觉变量。
+3. .gitignore：新增 models.yaml.bak、*.bak 排除，备份不入库。
+
+### 关键设计（避坑）
+
+- 密钥不回显：面板打开时密钥框留空，已配置则提示"留空保持不变"；仅当填入新值才提交，避免密钥出现在前端响应。
+- enabled 解耦：保存配置不覆盖文件里的 enabled 启动默认值；开关由内存与浏览器 localStorage（zzdm-cloud）独立管理。
+- 校验规则：temperature 限 0–2、num_predict 限 1–32768、roles 元素必须是 planner/executor/reviewer；非法输入直接拒绝且不污染现有配置。
+
+### 检查与验证（实测）
+
+- py_compile 通过（core/webui 退出码 0）。
+- 合法保存：roles=[executor]、temp=0.5、np=2048 成功生效，不提交密钥时 configured 仍为 true（密钥保留）。
+- 非法输入三种（temperature=5、roles 含 ceo、num_predict=0）均被拒并返回中文错误，拒绝后配置保持原值。
+- 文件核对：备份已生成且可解析；其余段与注释、role 块完整保留；保存后 enabled 保持 false。
+- 现有功能回归：首页 200、/api/ping 正常、云端开关与图构建不受影响。
+
+### 署名
+
+- 配置面板代码与架构：谋士（MoShi）
+- 实测、验证与记录：匠师（JiangShi）
+
+---
+
 > 记录原则：所有条目以实际部署、文件与验证结果为准；后续每次改动应在此文件追加新版本，不回填、不臆测。

@@ -90,6 +90,7 @@
 - 客户端提供"启动云端大模型"开关：打开后，指定岗位（planner/executor/reviewer）走兼容 OpenAI 接口的云端大模型，其余岗位仍走本地 Ollama，即"混合"。
 - 支持自定义 base_url/api_key/model/roles，适配 DeepSeek、通义千问、智谱 GLM、OpenAI 等；默认关闭、默认全本地，密钥不入库。
 - 未配置密钥或开关关闭时自动回退本地，不报错；已用真实 DeepSeek 密钥实测全云端与混合问答正常。
+- v1.3.1 起新增"云端设置"网页面板：可直接在浏览器编辑 base_url/密钥/模型/岗位/温度/长度，服务端校验、自动备份 models.yaml.bak，密钥不回显、留空保持不变，仅改 cloud 段不动其他配置。
 
 ---
 
