@@ -4,6 +4,7 @@
 依赖：starlette / uvicorn / sse-starlette（已随 langgraph-api 安装）
 """
 import json
+import os
 import sys
 import threading
 import time
@@ -114,6 +115,10 @@ HTML = r"""<!doctype html>
     background:transparent;padding:4px 12px;border-radius:999px;cursor:pointer;letter-spacing:.06em;transition:.2s;}
   .tbtn:hover{color:var(--text);border-color:var(--accent);}
   #cbtn.on{color:var(--accent);border-color:var(--accent);}
+  .kill-btn{margin-left:12px;font-size:11px;color:var(--dim);border:1px solid var(--line);
+    background:transparent;padding:4px 10px;border-radius:999px;cursor:pointer;
+    letter-spacing:.05em;transition:.2s;}
+  .kill-btn:hover{color:#e08a8a;border-color:#e08a8a;background:rgba(224,138,138,.1);}
   #panel{position:fixed;top:64px;right:28px;width:280px;background:var(--surface);
     border:1px solid var(--line);border-radius:16px;padding:18px;display:none;z-index:99;
     box-shadow:0 18px 50px rgba(0,0,0,.55);}
@@ -123,7 +128,7 @@ HTML = r"""<!doctype html>
   .presets{display:flex;gap:8px;flex-wrap:wrap;}
   .preset{border:1px solid var(--line);background:transparent;color:var(--text);font-size:12px;
     padding:6px 12px;border-radius:999px;cursor:pointer;transition:.2s;}
-  .preset.on{border-color:var(--accent);color:var(--accent);}
+  .preset.on{border-color:var(--accent);color:var(--accent);font-weight:600;}
   .row{display:flex;align-items:center;justify-content:space-between;margin:9px 0;font-size:12px;color:var(--dim);}
   .row input[type=color]{width:34px;height:24px;border:1px solid var(--line);border-radius:6px;background:transparent;cursor:pointer;padding:0;}
   .row input[type=range]{width:118px;accent-color:var(--accent);}
@@ -347,7 +352,11 @@ HTML = r"""<!doctype html>
   <span id="plugbtns"></span>
   <button class="tbtn" id="monbtn">监控</button>
   <button class="tbtn" id="tbtn">主题</button>
-  <div class="status"><span id="dot" class="dot"></span><span id="stat">检测中…</span></div>
+  <div class="status">
+    <span id="dot" class="dot"></span>
+    <span id="stat">正在连接 Ollama…</span>
+    <button class="kill-btn" id="kill-btn" title="强制关闭后端 Web 服务">杀后台</button>
+  </div>
 </header>
 <div id="wrap">
   <aside id="sessions">
@@ -646,7 +655,7 @@ function openMenu(id,x,y){
     ['标记图标',()=>cycleIcon(target)],
     ['在新对话中继续',()=>{const s=sessions.find(v=>v.id===target);if(s)newSession({html:s.html,group:s.group});}],
     ['分叉对话',()=>{const s=sessions.find(v=>v.id===target);if(s)newSession({html:s.html,parent:s.id,group:s.group,icon:s.icon});}],
-    ['移动到项目…',()=>{const g=prompt('项目名（例如：工作 / 学习 / 灵感）');if(g&&g.trim()){const s=sessions.find(v=>v.id===target);if(s){s.group=g.trim().slice(0,20);saveSessions();renderSessions();}}],
+    ['移动到项目…',()=>{const g=prompt('项目名（例如：工作 / 学习 / 灵感）');if(g&&g.trim()){const s=sessions.find(v=>v.id===target);if(s){s.group=g.trim().slice(0,20);saveSessions();renderSessions();}}}],
     ['归档',()=>{const s=sessions.find(v=>v.id===target);if(s){s.archived=true;saveSessions();renderSessions();}}],
     ['恢复（取消归档）',()=>{const s=sessions.find(v=>v.id===target);if(s){s.archived=false;saveSessions();renderSessions();}}],
     ['删除',()=>delSession(target)],
@@ -759,6 +768,19 @@ q.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefau
 async function ping(){try{const r=await fetch('/api/ping');const d=await r.json();
   $('dot').className='dot '+(d.ok?'ok':'bad'); $('stat').textContent=d.ok?('Ollama 正常 · 模型 '+(d.models||0)+' 个'):'Ollama 未启动';}
   catch(_){$('dot').className='dot bad';$('stat').textContent='服务连接失败';}}
+// 强制关闭后端 Web 服务（杀后台进程）
+function killBackend(){
+  if(!confirm('确定要强制关闭后端 Web 服务吗？\n\n关闭后本页面将失效，需重新双击 启动.bat 再打开。')) return;
+  fetch('/api/kill',{method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.ok){$('stat').textContent='后端已停止';$('dot').className='dot bad';
+        setTimeout(()=>{document.body.innerHTML='<div style="padding:40px;text-align:center;font-size:15px;">后端 Web 服务已停止。<br>重新使用请双击 启动.bat。</div>';},500);}
+      else alert('停止失败：'+(d.error||'未知错误'));
+    })
+    .catch(e=>alert('请求失败：'+e));
+}
+const killBtn=document.getElementById('kill-btn'); if(killBtn) killBtn.onclick=killBackend;
 // 云端大模型开关（混合模式）
 function renderCloud(st){
  const on=st.enabled===true;
@@ -1278,6 +1300,15 @@ async def api_ping(request):
     return HTMLResponse(json.dumps({"ok": ok, "models": models}), media_type="application/json")
 
 
+async def api_kill(request):
+    """强制关闭后端 Web 服务（v2.1.2：Web 端"杀后台"按钮）。"""
+    def _shutdown():
+        time.sleep(1.2)
+        os._exit(0)
+    threading.Thread(target=_shutdown, daemon=True).start()
+    return HTMLResponse(json.dumps({"ok": True}, ensure_ascii=False), media_type="application/json")
+
+
 async def api_chat(request):
     body = await request.json()
     question = (body.get("question") or "").strip()
@@ -1596,6 +1627,7 @@ async def api_monitor(request):
 routes = [
     Route("/", homepage),
     Route("/api/ping", api_ping),
+    Route("/api/kill", api_kill, methods=["POST"]),
     Route("/api/chat", api_chat, methods=["POST"]),
     Route("/api/cloud", api_cloud, methods=["GET", "POST"]),
     Route("/api/cloud/config", api_cloud_config, methods=["POST"]),

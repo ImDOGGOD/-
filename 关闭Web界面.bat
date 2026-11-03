@@ -1,5 +1,5 @@
 @echo off
-title ZuZhiDuoMou Stop v2.1.1
+title ZuZhiDuoMou Stop v2.1.2
 echo ============================================
 echo   ZuZhiDuoMou  Stop Web UI
 echo ============================================

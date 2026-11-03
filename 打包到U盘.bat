@@ -1,8 +1,8 @@
 @echo off
 cd /d "%~dp0"
-title ZuZhiDuoMou Package v2.1.1
+title ZuZhiDuoMou Package v2.1.2
 echo ============================================
-echo   ZuZhiDuoMou  Package Tool  v2.1.1
+echo   ZuZhiDuoMou  Package Tool  v2.1.2
 echo   Copy portable package + model warehouse
 echo   to a USB drive / target folder.
 echo ============================================
