@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
-title ZuZhiDuoMou Deploy v2.1.3
+title ZuZhiDuoMou Deploy v2.1.4
 echo ============================================
-echo   ZuZhiDuoMou  Deploy Tool  v2.1.3
+echo   ZuZhiDuoMou  Deploy Tool  v2.1.4
 echo   Author: MoShi
 echo ============================================
 echo.
@@ -69,73 +69,56 @@ if errorlevel 1 echo [WARN] Optional libraries missing - file/MCP features may b
 echo.
 echo [5/6] Checking toolchain dependencies...
 where nvidia-smi >nul 2>nul
-if errorlevel 1 (
-    echo [WARN] nvidia-smi not found. GPU monitoring will not work.
-    echo     Please install NVIDIA driver from: https://www.nvidia.com/Download/index.aspx
-) else (
-    echo [OK] nvidia-smi found.
-)
+if errorlevel 1 echo   [INFO] nvidia-smi not found - GPU monitor panel limited
+if not errorlevel 1 echo   [OK]   nvidia-smi found
 where node >nul 2>nul
-if errorlevel 1 (
-    echo [WARN] Node.js not found. Some MCP servers require Node.js.
-    where winget >nul 2>nul
-    if not errorlevel 1 (
-        echo     Installing Node.js via winget...
-        winget install --id OpenJS.NodeJS.LTS -e --silent --accept-package-agreements --accept-source-agreements
-        if not errorlevel 1 echo [OK] Node.js installed.
-    ) else (
-        echo     Please install Node.js manually from: https://nodejs.org/
-    )
-) else (
-    echo [OK] Node.js found.
-)
+if errorlevel 1 echo   [INFO] Node.js not found - only some MCP servers need it
+if not errorlevel 1 echo   [OK]   Node.js found
 where npx >nul 2>nul
-if errorlevel 1 (
-    echo [WARN] npx not found. Some MCP servers require npx.
-    where winget >nul 2>nul
-    if not errorlevel 1 (
-        echo     Installing npx via winget (bundled with Node.js)...
-        winget install --id OpenJS.NodeJS.LTS -e --silent --accept-package-agreements --accept-source-agreements
-    ) else (
-        echo     Please install Node.js (includes npx) from: https://nodejs.org/
-    )
-) else (
-    echo [OK] npx found.
-)
+if errorlevel 1 echo   [INFO] npx not found - only some MCP servers need it
+if not errorlevel 1 echo   [OK]   npx found
 where uvx >nul 2>nul
-if errorlevel 1 (
-    echo [WARN] uvx not found. Some MCP servers require uvx.
-    where winget >nul 2>nul
-    if not errorlevel 1 (
-        echo     Installing uv via winget...
-        winget install --id Astral.uv -e --silent --accept-package-agreements --accept-source-agreements
-        if not errorlevel 1 echo [OK] uvx installed.
-    ) else (
-        echo     Please install uv manually: pip install uv
-    )
-) else (
-    echo [OK] uvx found.
-)
+if errorlevel 1 echo   [INFO] uvx not found - only some MCP servers need it
+if not errorlevel 1 echo   [OK]   uvx found
 echo.
 echo [5/6] Checking model files...
-if not exist "model_warehouse\qwen2.5-7b\qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf" (
-    echo [WARN] Model files not found in model_warehouse.
-    set /p DL=Download all 6 core models now (about 13 GB)? [Y/N]: 
-    if /i "!DL!"=="Y" (
-        echo     Downloading... this takes a while. Log: gguf\download_all.log
-        ".venv\Scripts\python.exe" download_models.py
-        if errorlevel 1 (
-            echo [WARN] Download had errors. Re-run this script to resume.
-            pause
-            exit /b 1
-        )
-    ) else (
-        echo     Skipped. You can also copy model_warehouse from another
-        echo     machine, or run download_models.py later.
-        pause
-        exit /b 1
-    )
+if exist "model_warehouse\qwen2.5-7b\qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf" goto models_ok
+echo.
+echo ============================================================
+echo  [WARN] Model files are MISSING in model_warehouse.
+echo.
+echo  Option A recommended - copy the whole model_warehouse folder
+echo  from another machine into this folder:
+echo    %~dp0model_warehouse
+echo.
+echo  Option B - download now, about 13 GB, may take a long time
+echo ============================================================
+echo.
+set /p DL=Download now? [Y/N]: 
+if /i "!DL!"=="Y" goto do_download
+goto no_models
+:do_download
+echo     Downloading... Log: gguf\download_all.log
+".venv\Scripts\python.exe" download_models.py
+if errorlevel 1 (
+    echo [WARN] Download had errors. Re-run this script to resume.
+    pause
+    exit /b 1
 )
+goto models_ok
+:no_models
+echo.
+echo ============================================================
+echo  [STOP] No model files - models cannot be imported.
+echo.
+echo  Please copy model_warehouse from another machine into:
+echo    %~dp0model_warehouse
+echo  Then run this script again.
+echo ============================================================
+echo.
+pause
+exit /b 1
+:models_ok
 echo [6/6] Importing six core models into Ollama...
 cd "model_warehouse\qwen2.5-7b" && ollama create qwen2.5:7b -f Modelfile
 cd "..\spark-x2.5-4b" && ollama create spark-x2.5:4b -f Modelfile
@@ -145,11 +128,11 @@ cd "..\deepseek-r1-8b" && ollama create deepseek-r1:8b -f Modelfile
 cd "..\bge-m3" && ollama create bge-m3 -f Modelfile
 cd ..
 echo.
-echo [Optional] Image understanding (vision model)...
+echo [Optional] Image understanding - vision model...
 set VISION_OK=0
 if exist "model_warehouse\qwen2.5-vl-7b\Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf" if exist "model_warehouse\qwen2.5-vl-7b\mmproj-model-f16.gguf" set VISION_OK=1
 if "!VISION_OK!"=="1" goto import_vision
-set /p VL=Download the optional vision model now (about 5.6 GB)? [Y/N]: 
+set /p VL=Download the optional vision model now, about 5.6 GB? [Y/N]: 
 if /i "!VL!"=="Y" goto dl_vision
 echo     Skipped. Image mode will fall back to cloud VL or show a friendly hint.
 goto summary

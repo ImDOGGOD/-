@@ -745,3 +745,25 @@
 - 本机 `pip install --dry-run --ignore-installed -r requirements.txt`：无 ERROR / No matching / Conflict，固定版本（langchain-core 1.7.3、mcp-adapters 0.3.2、pypdf 6.21.4 等）全解析成功；`pip check` 无冲突。
 
 —— 谋士（MoShi），2026-11-03
+
+## v2.1.4（2026-11-03，谋士 MoShi）—— 修复安装部署脚本两处 batch 解析崩溃
+
+### 修复（对方机器"卡在 5/6 直接结束、根本没有 Y/N 提示"）
+- 现象：安装部署.bat 跑到 [5/6] 就闪退，命令行报 `... was unexpected at this time.`，退出码 255，用户从未看到 `[Y/N]` 询问。
+- 根因（两处 batch 解析坑）：
+  1. `if not exist (...)` 块内 `set /p DL=... (about 13 GB)? [Y/N]:` —— 提示文本里的 `(about 13 GB)` 括号被 cmd 当作 if 块结束符，导致 `?` 变成非法命令、脚本解析期崩溃；用户根本没机会看到 Y/N。
+  2. 工具链检测段（node/npx/uvx）用「嵌套 if/else + winget 自动安装」：本机/对方机缺 Node 时进入 winget 分支，winget 输出干扰 + 嵌套块解析异常，报 `... was unexpected`。
+- 修复：
+  1. [5/6] 模型检查改为 **goto 结构 + 去括号**：缺模型时输出醒目方框提示（Option A 拷贝 / Option B 下载 13GB），`set /p DL=Download now? [Y/N]:`（无括号），选 N 后显示 `[STOP] No model files...` 并 `pause`，**不再闪退**；
+  2. [5/6] 工具链检测改为 **纯检测 + 单行 if**（`[INFO]` / `[OK]`），**移除 winget 自动安装**（低门槛：不依赖 winget，缺组件不中断）；
+  3. 视觉模型段 `(vision model)` / `(about 5.6 GB)` 括号一并清理。
+
+### 低门槛适配
+- 缺 Node.js / npx / uvx / nvidia-smi 时只打印 `[INFO]` 提示，**不自动安装、不中断、不报错**，脚本继续走完全流程。
+
+### 验证（本机隔离测试环境，模拟对方"缺模型/缺 Node"机器，循环 5 遍）
+- 缺模型 + 缺 Node + 选 N：正确显示 `[WARN] Model files are MISSING` → `Download now? [Y/N]:` → `[STOP]` → `Press any key`（pause，不闪退），退出码 1；复测 3 遍全一致；
+- 模型齐全（放假 GGUF 模拟）：跳过询问 → `[6/6] Importing six core models` → `[Optional]` → `Environment summary` → `Deploy finished`，退出码 0；
+- **全程 0 次 `unexpected` 解析错误**；字节校验 CRLF+ASCII；pytest 15/15。
+
+—— 谋士（MoShi），2026-11-03

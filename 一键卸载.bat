@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title ZuZhiDuoMou Uninstall v2.1.3
+title ZuZhiDuoMou Uninstall v2.1.4
 set LOG=%~dp0uninstall_log.txt
 echo ==== ZuZhiDuoMou uninstall log ==== > "%LOG%" 2>nul
 if not exist "%LOG%" set LOG=%TEMP%\zzdm_uninstall.log
@@ -9,7 +9,7 @@ echo date: %date% %time% >> "%LOG%"
 echo script: %~f0 >> "%LOG%"
 echo. >> "%LOG%"
 echo ============================================
-echo   ZuZhiDuoMou  Uninstall Tool  v2.1.3
+echo   ZuZhiDuoMou  Uninstall Tool  v2.1.4
 echo ============================================
 echo.
 if not exist "%~dp0core.py" goto no_core
