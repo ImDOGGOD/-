@@ -43,3 +43,8 @@ models.yaml.tmp
 # 系统杂项
 .DS_Store
 Thumbs.db
+
+# 运行时日志（卸载/诊断脚本生成）
+uninstall_log.txt
+zzdm_diag.txt
+zzdm_diag.log
