@@ -1,0 +1,2 @@
+# 开发/测试依赖：普通部署不需要；CI 与本地跑回归时，在 requirements.txt 之外额外安装本文件。
+pytest

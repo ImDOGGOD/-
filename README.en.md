@@ -92,6 +92,13 @@ Two design principles guide the project:
 - Falls back to local automatically when no key is set or the toggle is off, without errors. Tested end-to-end with a real DeepSeek key for both full-cloud and hybrid Q&A.
 - Since v1.3.1, a "Cloud Settings" web panel lets you edit base_url/key/model/roles/temperature/max length directly in the browser, with server-side validation, automatic backup (models.yaml.bak), no key echo (leave blank to keep it), and only the cloud block is changed.
 
+### 2.7 Usage Stats and Automated Regression (New in v1.4.0)
+
+- A web "Stats" panel shows total runs, passed/failed, average latency, local/cloud/hybrid source breakdown, cumulative estimated tokens, memory and knowledge hit rates, and recent records.
+- Every model-based Q&A is recorded in stats.db (not committed). Tokens are estimated locally with tiktoken, not actual billing, for order-of-magnitude reference only.
+- Ships with a minimal pytest regression suite (tests/, 12 cases) covering cloud config validation, cloud block replacement, config saving, and the calculator whitelist — pure logic that needs no GPU.
+- GitHub Actions CI: on push/PR it installs dependencies on Ubuntu + Python 3.13, generates models.yaml from the example, and runs pytest. Dev dependencies live in requirements-dev.txt.
+
 ---
 
 ## 3. Architecture

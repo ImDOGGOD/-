@@ -1,6 +1,6 @@
 @echo off
 cd /d "%~dp0"
-title ZuZhiDuoMou Uninstall v1.3.1
+title ZuZhiDuoMou Uninstall v1.4.0
 echo ============================================
 echo   ZuZhiDuoMou  Uninstall Tool
 echo ============================================

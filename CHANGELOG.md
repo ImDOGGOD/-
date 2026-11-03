@@ -525,4 +525,40 @@
 
 ---
 
+## v1.4.0（2026-11-03）—— 自动化回归 CI + 运行可观测性
+
+### 背景与目标
+
+- 把历次手工验证沉淀为可重复执行的最小回归用例，并接入 GitHub Actions，改动后自动跑测试，防止回归。
+- 新增运行统计：问答耗时、本地/云端来源、记忆与知识命中率、token 估算，让成本与效果可观察。
+- 约束：纯增量、不改变现有问答与 Web 健壮性，统计失败不影响主流程。
+
+### 变更清单（依据实际代码）
+
+1. 新增 tests/ 目录：12 个 pytest 用例，覆盖云端配置校验 _validate_cloud_updates、cloud 段替换 _replace_cloud_block、save_cloud_config（tmp 隔离、独立 cfg、不接触真实密钥）、计算器 AST 白名单。
+2. 新增 .github/workflows/test.yml：push/PR 到 main 触发，Ubuntu + Python 3.13，装依赖、从 example 复制 models.yaml、跑 pytest。
+3. 新增 requirements-dev.txt：开发/测试依赖 pytest，与运行时 requirements.txt 分离。
+4. 新增 stats.py：SQLite 表 runs，记录每次问答的模式、来源、耗时、云端/本地节点数、记忆/知识命中、token 估算；tiktoken 不可用时字符兜底。
+5. webui.py：api_chat 埋点（计时、按 banner 标题统计云端/本地节点、累积答案、失败也记录），新增 GET /api/stats 与"统计"面板；统计写入 try/except 包裹。
+6. stats.db 由 .gitignore 的 *.db 规则自动排除，无需新增忽略项。
+7. .gitattributes：新增 *.yml text eol=lf（与 *.yaml 一致），消除 workflow 换行 warning，保证跨平台一致。
+
+### 口径说明
+
+- token 为本地 tiktoken（cl100k_base）估算，不是云端真实计费，仅用于量级参考；前端面板已明确标注。
+- 来源依据流式 banner 标题是否含"（云端）"判定 local/cloud/hybrid；统计的是节点级趋势，不追求逐节点绝对精确。
+
+### 检查与验证（实测）
+
+- pytest 12 个用例全部通过。
+- 端到端：TestClient 走真实本地问答，stats.db 正确落库（source=local、local_nodes=2、耗时、token 估算、知识命中 4 条、passed=1），/api/stats 返回正确。
+- 安全：check-ignore 命中 stats.db/models.yaml/.bak/memory.db/knowledge.db；待提交文件与 tests 均无真实密钥，本地 models.yaml 密钥仍在且被忽略。
+
+### 署名
+
+- 框架与统计功能：谋士（MoShi）
+- 测试、CI、核对与记录：匠师（JiangShi）
+
+---
+
 > 记录原则：所有条目以实际部署、文件与验证结果为准；后续每次改动应在此文件追加新版本，不回填、不臆测。

@@ -5,11 +5,13 @@
 """
 import json
 import threading
+import time
 import webbrowser
 from collections import deque
 
 import kb
 import memory
+import stats
 import uvicorn
 from chat import command_reply
 from core import (
@@ -142,6 +144,17 @@ HTML = r"""<!doctype html>
     padding:9px 0;border-radius:999px;cursor:pointer;font-size:12.5px;font-weight:600;letter-spacing:.1em;}
   #cmsg{margin-top:10px;font-size:11.5px;line-height:1.5;min-height:16px;word-break:break-word;}
   #cmsg.ok{color:var(--text);} #cmsg.err{color:#e08a8a;}
+  #spanel{position:fixed;top:64px;right:28px;width:340px;background:var(--surface);
+    border:1px solid var(--line);border-radius:16px;padding:18px;display:none;z-index:101;
+    box-shadow:0 18px 50px rgba(0,0,0,.55);max-height:80vh;overflow-y:auto;}
+  #spanel.open{display:block;animation:fade .25s ease;}
+  #spanel h3{font-size:11px;letter-spacing:.14em;color:var(--dim);font-weight:500;margin:14px 0 8px;}
+  #spanel h3:first-child{margin-top:0;}
+  #spanel .srow{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin:7px 0;gap:10px;}
+  #spanel .srow b{color:var(--text);font-weight:600;text-align:right;}
+  #spanel .sempty{font-size:12px;color:var(--dim);padding:10px 0;}
+  #spanel .srec{font-size:11px;color:var(--dim);border-top:1px solid var(--line);padding:7px 0;line-height:1.5;}
+  #spanel .srec b{color:var(--text);font-weight:600;}
   @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
   ::-webkit-scrollbar{width:8px;} ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:6px;}</style>
 <script>try{const o=JSON.parse(localStorage.getItem('zzdm-theme'));if(o&&o.vars){const r=document.documentElement.style;Object.keys(o.vars).forEach(k=>r.setProperty(k,o.vars[k]));}}catch(e){}</script>
@@ -152,6 +165,7 @@ HTML = r"""<!doctype html>
   <div class="title">足智多谋 <small>v""" + __version__ + r""" · 全部数据本机运行 · 谋士 出品</small></div>
   <button class="tbtn" id="cbtn">云端：关</button>
   <button class="tbtn" id="cset">云端设置</button>
+  <button class="tbtn" id="sbtn">统计</button>
   <button class="tbtn" id="tbtn">主题</button>
   <div class="status"><span id="dot" class="dot"></span><span id="stat">检测中…</span></div>
 </header>
@@ -205,6 +219,10 @@ HTML = r"""<!doctype html>
   </div>
   <button id="csave">保存配置</button>
   <div id="cmsg"></div>
+</div>
+<div id="spanel">
+  <h3>运行统计</h3>
+  <div id="sbody"><div class="sempty">加载中…</div></div>
 </div>
 <script>
 let mode='general', cur=null, busy=false;
@@ -362,6 +380,39 @@ $('csave').onclick=async()=>{
   else{$('cmsg').className='err';$('cmsg').textContent='保存失败：'+(d.error||'未知错误');}
  }catch(e){$('cmsg').className='err';$('cmsg').textContent='网络错误：'+String(e);}
 };
+// 运行统计面板（可观测性）
+function renderStats(d){
+ const body=$('sbody');
+ if(!d.total){body.innerHTML='<div class="sempty">暂无记录，先进行几次问答。</div>';return;}
+ const src=d.by_source||{};
+ const srcText=Object.keys(src).map(k=>k+' '+src[k]).join(' · ')||'-';
+ let h='';
+ h+='<h3>问答概览</h3>';
+ h+='<div class="srow"><span>总问答</span><b>'+d.total+'</b></div>';
+ h+='<div class="srow"><span>通过 / 失败</span><b>'+d.passed+' / '+d.failed+'</b></div>';
+ h+='<div class="srow"><span>平均耗时</span><b>'+d.avg_duration_ms+' ms</b></div>';
+ h+='<div class="srow"><span>来源分布</span><b>'+srcText+'</b></div>';
+ h+='<h3>Token 估算（本地估算，非真实计费）</h3>';
+ h+='<div class="srow"><span>累计输入</span><b>'+d.est_prompt_tokens+'</b></div>';
+ h+='<div class="srow"><span>累计输出</span><b>'+d.est_completion_tokens+'</b></div>';
+ h+='<h3>命中率</h3>';
+ h+='<div class="srow"><span>记忆命中率</span><b>'+Math.round(d.memory_hit_rate*100)+'%</b></div>';
+ h+='<div class="srow"><span>知识命中率</span><b>'+Math.round(d.knowledge_hit_rate*100)+'%</b></div>';
+ h+='<h3>最近记录</h3>';
+ (d.recent||[]).forEach(r=>{
+  h+='<div class="srec"><b>#'+r.id+' '+r.source+'</b> · '+r.mode+' · '+r.duration_ms+'ms · '
+   +'输入'+r.est_prompt_tokens+' / 输出'+r.est_completion_tokens+'</div>';
+ });
+ body.innerHTML=h;
+}
+$('sbtn').onclick=async()=>{
+ const panel=$('spanel');
+ const willOpen=!panel.classList.contains('open');
+ $('panel').classList.remove('open'); $('cpanel').classList.remove('open');
+ panel.classList.toggle('open',willOpen);
+ if(willOpen){try{const r=await fetch('/api/stats');renderStats(await r.json());}catch(e){
+  $('sbody').innerHTML='<div class="sempty">统计加载失败。</div>';}}
+};
 ping(); setInterval(ping,30000);
 </script>
 </body></html>"""
@@ -407,6 +458,25 @@ async def api_chat(request):
             return
         mem_ctx = memory.build_context(question)
         kb_ctx = kb.build_context(question)
+        t0 = time.perf_counter()
+        memory_hits = len(memory.search(question))
+        knowledge_hits = len(kb.search(question))
+        cloud_nodes = local_nodes = 0
+        answer_parts = []
+        run_passed = True
+        run_error = ""
+
+        def _record():
+            source = ("cloud" if cloud_nodes and not local_nodes else
+                      "hybrid" if cloud_nodes else "local")
+            prompt_text = "\n".join([question, mem_ctx or "", kb_ctx or ""])
+            try:
+                stats.record_run(mode, source, (time.perf_counter() - t0) * 1000,
+                                 cloud_nodes, local_nodes, memory_hits, knowledge_hits,
+                                 prompt_text, "".join(answer_parts), run_passed, run_error)
+            except Exception as e:
+                print(f"[stats] 记录失败：{e}")
+
         if mode == "code":
             eviter = iter_ask(get_graph("code"), get_titles("code"), question, list(HISTORY), mem_ctx, kb_ctx)
         elif mode == "agent":
@@ -415,19 +485,28 @@ async def api_chat(request):
             eviter = iter_ask(get_graph("general"), get_titles("general"), question, list(HISTORY), mem_ctx, kb_ctx)
         for ev, data in eviter:
             if ev == "banner":
+                if "（云端）" in data:
+                    cloud_nodes += 1
+                else:
+                    local_nodes += 1
                 yield {"event": "banner", "data": json.dumps({"title": data})}
             elif ev == "text":
+                answer_parts.append(data)
                 yield {"event": "text", "data": json.dumps({"text": data})}
             elif ev == "tool":
                 yield {"event": "tool", "data": json.dumps({"text": data})}
             elif ev == "error":
+                run_passed = False
+                run_error = data
                 yield {"event": "error", "data": json.dumps({"message": data})}
+                _record()
                 yield {"event": "done", "data": "{}"}
                 return
             elif ev == "final":
                 if data:
                     draft = data.get("draft") or ""
                     path_label = mode if mode in ("code", "agent") else data.get("mode", mode)
+                    run_passed = data.get("passed", True)
                     yield {"event": "final", "data": json.dumps({
                         "path": path_label,
                         "revisions": data.get("revisions", 0),
@@ -436,6 +515,7 @@ async def api_chat(request):
                     if draft:
                         HISTORY.append(f"用户：{question}\n助手：{draft[:600]}")
                         memory.log_turn(data.get("mode", mode), question, draft)
+        _record()
         yield {"event": "done", "data": "{}"}
 
     return EventSourceResponse(gen())
@@ -463,12 +543,18 @@ async def api_cloud_config(request):
     return HTMLResponse(json.dumps({"ok": True, **status}, ensure_ascii=False), media_type="application/json")
 
 
+async def api_stats(request):
+    """运行统计：GET 返回汇总（平均耗时、来源分布、token 估算、记忆/知识命中率）。"""
+    return HTMLResponse(json.dumps(stats.summary(), ensure_ascii=False), media_type="application/json")
+
+
 routes = [
     Route("/", homepage),
     Route("/api/ping", api_ping),
     Route("/api/chat", api_chat, methods=["POST"]),
     Route("/api/cloud", api_cloud, methods=["GET", "POST"]),
     Route("/api/cloud/config", api_cloud_config, methods=["POST"]),
+    Route("/api/stats", api_stats),
 ]
 app = Starlette(routes=routes)
 
