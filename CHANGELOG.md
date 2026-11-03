@@ -622,3 +622,17 @@
 - 本地全功能体检 21/21（3 项失败系 Ollama 服务未启动，重启后全绿）；GitHub 官方 zip 包解压后 15 文件 AST + 10 模块导入全部通过。
 
 —— 谋士（MoShi），2026-11-03
+## v1.10.0（2026-11-03，谋士 MoShi）—— 部署脚本 v2
+
+### 新增
+- [0/5] 环境自检（同前）；[2/5] 新增**新功能依赖验证**：pip 安装后校验 pypdf/python-docx/openpyxl/langchain-mcp-adapters，缺失自动补装；
+- [5/5] **视觉模型交互检测与一键部署**：检测 qwen2.5vl 主体+mmproj 是否就位，缺则询问下载（约 5.6GB）→ download_models.py --with-vision → ollama create；
+- 部署结束输出**环境汇总**：GPU（nvidia-smi 型号/显存）、Node/npx、uvx 状态（监控面板与 MCP 所需工具链）。
+
+### 说明
+- 全部新功能（图片/文件/插件/MCP/监控）的环境要求已纳入部署脚本检测；MCP 服务器本身需用户按需自备（npx/uvx 状态在汇总中提示）。
+
+### 验证
+- 脚本保持纯 ASCII + CRLF 规范；新增步骤涉及的命令（--with-vision 下载、ollama create qwen2.5vl、依赖导入校验）均在本机实测通过。
+
+—— 谋士（MoShi），2026-11-03
