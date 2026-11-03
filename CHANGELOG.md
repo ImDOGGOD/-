@@ -652,3 +652,29 @@
 - 全功能回归 11/11（页面、五模式、工作台、六面板、插件桥、ping/memory/kb/plugins/monitor/stats）；pytest 12/12；模块导入全过。
 
 —— 谋士（MoShi），2026-11-03
+## v2.1.0（2026-11-03，谋士 MoShi）—— 部署脚本全自动化
+
+### 新增
+- 部署脚本 v3（安装部署.bat v2.1.0）：工具链全自动检测与安装
+  - [1/6] Python 3.13 自动 winget 安装
+  - [2/6] Ollama 自动 winget 安装
+  - [3/6] 虚拟环境 + 依赖安装 + 功能依赖验证（pypdf/docx/openpyxl/MCP）
+  - [3/6] 新增：工具链全自动检测与安装
+    - NVIDIA 驱动：检测 nvidia-smi，缺失时给出官网下载链接
+    - Node.js/npx：缺失时自动 winget 安装 Node.js LTS（含 npx）
+    - uvx：缺失时自动 winget 安装 Astral.uv
+  - [4/6] 核心模型文件检查（缺失时交互下载 13GB）
+  - [5/6] 核心 6 模型导入 Ollama
+  - [6/6] 可选视觉模型（qwen2.5vl:7b，主体+mmproj）交互下载与导入
+  - 部署结束输出环境汇总：GPU/Node/npx/uvx 状态，MCP/监控面板所需工具链一目了然
+
+### 说明
+- 全自动化：从零环境到可用，仅需双击安装部署.bat 跟随提示
+- 智能兜底：winget 失败时给出官网下载链接，不卡死
+- NVIDIA 驱动不自动安装（需用户手动），但给出官网链接和提示
+
+### 验证
+- 本地全功能体检 11/11 通过；pytest 12/12；GitHub zip 包解压验证通过
+- 依赖验证命令输出 OK；视觉模型检测（主体+mmproj）通过
+
+—— 谋士（MoShi），2026-11-03

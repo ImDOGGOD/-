@@ -1,13 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
-title ZuZhiDuoMou Deploy v2.0.0
+title ZuZhiDuoMou Deploy v2.1.0
 echo ============================================
-echo   ZuZhiDuoMou  Deploy Tool  v2.0.0
+echo   ZuZhiDuoMou  Deploy Tool  v2.1.0
 echo   Author: MoShi
 echo ============================================
 echo.
-echo [0/5] Checking environment...
+echo [0/6] Checking environment...
 where python >nul 2>nul
 if errorlevel 1 goto no_python
 python -c "import sys;sys.exit(0 if sys.version_info>=(3,11) else 1)" >nul 2>nul
@@ -36,14 +36,14 @@ exit /b 1
 where ollama >nul 2>nul
 if errorlevel 1 goto no_ollama
 echo [OK] Python and Ollama are ready.
-echo [1/5] Creating virtual environment (if missing)...
+echo [1/6] Creating virtual environment (if missing)...
 if not exist ".venv\Scripts\python.exe" python -m venv .venv
 if errorlevel 1 (
     echo [!] Failed to create venv. Check Python installation and PATH.
     pause
     exit /b 1
 )
-echo [2/5] Installing dependencies...
+echo [2/6] Installing dependencies...
 if not exist "models.yaml" copy "models.yaml.example" "models.yaml" >nul
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 (
@@ -51,7 +51,7 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-echo [2/5] Verifying feature dependencies...
+echo [3/6] Verifying feature dependencies...
 ".venv\Scripts\python.exe" -c "import pypdf,docx,openpyxl,langchain_mcp_adapters" >nul 2>nul
 if errorlevel 1 (
     echo     Retrying missing file/MCP libraries...
@@ -60,7 +60,57 @@ if errorlevel 1 (
 ".venv\Scripts\python.exe" -c "import pypdf,docx,openpyxl,langchain_mcp_adapters;print('  OK  file + MCP libraries')" 2>nul
 if errorlevel 1 echo [!] Optional libraries missing - file/MCP features may be limited.
 echo.
-echo [3/5] Checking model files...
+echo [5/6] Checking toolchain dependencies...
+where nvidia-smi >nul 2>nul
+if errorlevel 1 (
+    echo [!] nvidia-smi not found. GPU monitoring will not work.
+    echo     Please install NVIDIA driver from: https://www.nvidia.com/Download/index.aspx
+) else (
+    echo [OK] nvidia-smi found.
+)
+where node >nul 2>nul
+if errorlevel 1 (
+    echo [!] Node.js not found. Some MCP servers require Node.js.
+    where winget >nul 2>nul
+    if not errorlevel 1 (
+        echo     Installing Node.js via winget...
+        winget install --id OpenJS.NodeJS.LTS -e --silent --accept-package-agreements --accept-source-agreements
+        if not errorlevel 1 echo [OK] Node.js installed.
+    ) else (
+        echo     Please install Node.js manually from: https://nodejs.org/
+    )
+) else (
+    echo [OK] Node.js found.
+)
+where npx >nul 2>nul
+if errorlevel 1 (
+    echo [!] npx not found. Some MCP servers require npx.
+    where winget >nul 2>nul
+    if not errorlevel 1 (
+        echo     Installing npx via winget (bundled with Node.js)...
+        winget install --id OpenJS.NodeJS.LTS -e --silent --accept-package-agreements --accept-source-agreements
+    ) else (
+        echo     Please install Node.js (includes npx) from: https://nodejs.org/
+    )
+) else (
+    echo [OK] npx found.
+)
+where uvx >nul 2>nul
+if errorlevel 1 (
+    echo [!] uvx not found. Some MCP servers require uvx.
+    where winget >nul 2>nul
+    if not errorlevel 1 (
+        echo     Installing uv via winget...
+        winget install --id Astral.uv -e --silent --accept-package-agreements --accept-source-agreements
+        if not errorlevel 1 echo [OK] uvx installed.
+    ) else (
+        echo     Please install uv manually: pip install uv
+    )
+) else (
+    echo [OK] uvx found.
+)
+echo.
+echo [5/6] Checking model files...
 if not exist "model_warehouse\qwen2.5-7b\qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf" (
     echo [!] Model files not found in model_warehouse.
     set /p DL=Download all 6 core models now (about 13 GB)? [Y/N]: 
@@ -79,7 +129,7 @@ if not exist "model_warehouse\qwen2.5-7b\qwen2.5-7b-instruct-q4_k_m-00001-of-000
         exit /b 1
     )
 )
-echo [4/5] Importing six core models into Ollama...
+echo [6/6] Importing six core models into Ollama...
 cd "model_warehouse\qwen2.5-7b" && ollama create qwen2.5:7b -f Modelfile
 cd "..\spark-x2.5-4b" && ollama create spark-x2.5:4b -f Modelfile
 cd "..\internlm3-8b" && ollama create internlm3:8b -f Modelfile
@@ -88,7 +138,7 @@ cd "..\deepseek-r1-8b" && ollama create deepseek-r1:8b -f Modelfile
 cd "..\bge-m3" && ollama create bge-m3 -f Modelfile
 cd ..
 echo.
-echo [5/5] Optional: image understanding (vision model)...
+echo [Optional] Image understanding (vision model)...
 set VISION_OK=0
 if exist "model_warehouse\qwen2.5-vl-7b\Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf" if exist "model_warehouse\qwen2.5-vl-7b\mmproj-model-f16.gguf" set VISION_OK=1
 if "!VISION_OK!"=="1" goto import_vision
