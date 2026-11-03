@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
-title ZuZhiDuoMou Diagnosis v2.1.2
+title ZuZhiDuoMou Diagnosis v2.1.3
 set LOG=%~dp0zzdm_diag.txt
 echo ==== ZuZhiDuoMou diagnosis ==== > "%LOG%" 2>nul
 if not exist "%LOG%" set LOG=%TEMP%\zzdm_diag.log

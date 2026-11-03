@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
-title ZuZhiDuoMou Deploy v2.1.2
+title ZuZhiDuoMou Deploy v2.1.3
 echo ============================================
-echo   ZuZhiDuoMou  Deploy Tool  v2.1.2
+echo   ZuZhiDuoMou  Deploy Tool  v2.1.3
 echo   Author: MoShi
 echo ============================================
 echo.
@@ -43,19 +43,26 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-echo [2/6] Installing dependencies...
+echo [2/6] Installing dependencies (PyPI official source)...
 if not exist "models.yaml" copy "models.yaml.example" "models.yaml" >nul
-".venv\Scripts\python.exe" -m pip install -r requirements.txt
-if errorlevel 1 (
-    echo [WARN] pip install failed. Check network and retry.
-    pause
-    exit /b 1
-)
+".venv\Scripts\python.exe" -m pip install -r requirements.txt -i https://pypi.org/simple/ --timeout 60 --retries 3
+if not errorlevel 1 goto deps_ok
+echo [WARN] Official source failed. Retrying with default source...
+".venv\Scripts\python.exe" -m pip install -r requirements.txt --timeout 60 --retries 3
+if not errorlevel 1 goto deps_ok
+echo [ERROR] pip install failed. Possible causes:
+echo    1. Network blocked / DNS / firewall
+echo    2. pip mirror misconfigured - try deleting C:\Users\YOU\pip\pip.ini
+echo    3. 32-bit Python - some packages need 64-bit Python
+echo    Screenshot the error above and send to developer.
+pause
+exit /b 1
+:deps_ok
 echo [3/6] Verifying feature dependencies...
 ".venv\Scripts\python.exe" -c "import pypdf,docx,openpyxl,langchain_mcp_adapters" >nul 2>nul
 if errorlevel 1 (
     echo     Retrying missing file/MCP libraries...
-    ".venv\Scripts\python.exe" -m pip install pypdf python-docx openpyxl langchain-mcp-adapters
+    ".venv\Scripts\python.exe" -m pip install pypdf python-docx openpyxl langchain-mcp-adapters -i https://pypi.org/simple/
 )
 ".venv\Scripts\python.exe" -c "import pypdf,docx,openpyxl,langchain_mcp_adapters;print('  OK  file + MCP libraries')" 2>nul
 if errorlevel 1 echo [WARN] Optional libraries missing - file/MCP features may be limited.

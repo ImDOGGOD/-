@@ -731,3 +731,17 @@
 - 已固化自检：新增 tests/test_webui_js.py（花括号/圆括号配平 + 关键元素存在），纳入 pytest 与 GitHub Actions CI 自动拦截同类问题；本地另可用 playwright 驱动系统 Edge 做真实浏览器端到端验证（需 `pip install playwright`，测试完成后脚本即删）。
 
 —— 谋士（MoShi），2026-11-03
+
+## v2.1.3（2026-11-03，谋士 MoShi）—— 修复部署依赖安装失败（pip 源/网络）
+
+### 修复（对方机器 pip 装 pypdf 报 "No matching distribution"）
+- 现象：安装部署.bat 卡在 [2/6] Installing dependencies，pip 报 `ERROR: No matching distribution found for pypdf`，随后 `[WARN] pip install failed`；重跑后又能正常下载依赖（网络波动，时好时坏）。
+- 根因：requirements.txt 中 `pypdf`/`python-docx`/`openpyxl`/`langchain-mcp-adapters` 未固定版本，且 pip 用默认源——用户机器可能配了未同步的国内镜像或网络受限，导致某次索引不到 pypdf。
+- 修复：
+  1. requirements.txt 固定全部运行依赖版本（`pypdf==6.21.4`、`python-docx==1.2.0`、`openpyxl==3.1.5`、`langchain-mcp-adapters==0.3.2`，与本机验证一致，`pip check` 无冲突）；
+  2. 安装部署.bat 的 pip 步骤改用 **PyPI 官方源**（`-i https://pypi.org/simple/ --timeout 60 --retries 3`），失败后**自动用默认源重试一次**，再失败才报错，并列出「网络/防火墙、pip 镜像配置、32 位 Python」三种可能原因，提示截图反馈。
+
+### 验证
+- 本机 `pip install --dry-run --ignore-installed -r requirements.txt`：无 ERROR / No matching / Conflict，固定版本（langchain-core 1.7.3、mcp-adapters 0.3.2、pypdf 6.21.4 等）全解析成功；`pip check` 无冲突。
+
+—— 谋士（MoShi），2026-11-03
