@@ -722,11 +722,12 @@
 ### 验证
 - 本机实测：页面加载、杀后台按钮、五模式、工作台（笔记/图谱/搜索/@）、ping(ok,7模型)、chat 完整事件流、`/api/kill` 返回 ok 且端口随后释放；
 - GitHub zip 包（73 条目）：6 个 bat 全部 CRLF+ASCII+无 `[!]`+版本 v2.1.2、webui JS 花括号/圆括号配平、kill 按钮/接口、卸载脚本 cancel 路径退出码 0、15 模块 AST/导入全过；
-- pytest 15/15（新增 3 个前端 JS 完整性用例）。
+- pytest 15/15（新增 3 个前端 JS 完整性用例）；
+- **真实浏览器前端测试**（playwright + 系统 Edge headless）：页面加载、无 pageerror、状态灯变"正常"、输入框/发送/模式/侧边栏/杀后台按钮就位、点主题面板打开、发消息出现用户气泡与模型回答、回答带复制按钮——12/12 全过，console error 清零（补空 favicon 消除 404）。
 
 ### 测试盲区反思（为何之前未发现）
 - 此前回归只覆盖后端：pytest 测纯逻辑、HTTP 测 API、bat 测字节，均不真正执行前端 JS；
 - 前端 JS 语法错误只在浏览器解析 `<script>` 时才暴露，后端测试全绿无法覆盖；
-- 已固化自检：新增 tests/test_webui_js.py（花括号/圆括号配平 + 关键元素存在），纳入 pytest 与 GitHub Actions CI 自动拦截同类问题。
+- 已固化自检：新增 tests/test_webui_js.py（花括号/圆括号配平 + 关键元素存在），纳入 pytest 与 GitHub Actions CI 自动拦截同类问题；本地另可用 playwright 驱动系统 Edge 做真实浏览器端到端验证（需 `pip install playwright`，测试完成后脚本即删）。
 
 —— 谋士（MoShi），2026-11-03

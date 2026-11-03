@@ -46,6 +46,7 @@ HTML = r"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>足智多谋 · Web 界面</title>
+<link rel="icon" href="data:,">
 <style>:root{
     --bg:#0a0a0a; --surface:#101010; --card:#131313; --line:rgba(255,255,255,.08);
     --text:#f2f2f0; --dim:#8a8a86; --faint:#55554f; --inv:#ffffff; --inv-text:#0a0a0a;
