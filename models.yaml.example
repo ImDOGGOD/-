@@ -85,6 +85,31 @@ agent:
   max_revisions: 2
   max_tool_steps: 10
 
+# 文案创作模式（social，v1.6.0：内容创作，人工确认后发布）
+social:
+  planner:
+    model: qwen2.5:7b
+    temperature: 0.3
+    num_ctx: 8192
+    num_predict: 512
+    role: |
+      你是文案策划。分析用户需求（平台、主题、语气、长度），给出简明创作要点。只输出要点。
+  executor:
+    model: internlm3:8b
+    temperature: 0.8
+    num_ctx: 8192
+    num_predict: 2048
+    role: |
+      你是资深内容创作者，擅长小红书、微博、朋友圈、公众号、X(Twitter) 等平台的文案。
+      规则：按用户指定的平台风格与字数要求写作；开头直接给文案正文；加适当标题、话题标签与排版；结尾附一行"发布建议"（建议发布时间与配图方向）。
+  reviewer:
+    model: deepseek-r1:8b
+    temperature: 0.2
+    num_ctx: 8192
+    num_predict: 4096
+    role: |
+      你是内容审查员。检查文案是否符合平台调性、字数限制与用户要求，指出违规风险（广告法用语、敏感词、夸大宣传）；最后一行必须只写"判定：通过"或"判定：退回"，正文与示例中不要再出现"判定："字样。
+  max_revisions: 1
 # 联网搜索设置（工具 web_search 读取；更换服务商只需改这里）
 search:
   provider: bocha
@@ -103,6 +128,30 @@ cloud:
   temperature: 0.3
   num_predict: 4096
 
+# 视觉识别（图片理解，v1.5.0；本地需视觉模型，或云端 VL API）
+vision:
+  model: qwen2.5vl:7b
+  temperature: 0.2
+  num_ctx: 4096
+  provider: local
+  cloud_base_url: ""
+  cloud_api_key: ""
+  cloud_model: ""
+# MCP 工具接入（v1.7.0；enabled: false 时不连接）
+mcp:
+  enabled: false
+  servers:
+    # 本地 stdio 服务器示例（按需取消注释并安装 npx/uvx）：
+    # - name: filesystem
+    #   command: npx
+    #   args: [-y, @modelcontextprotocol/server-filesystem, F:\\AI]
+    # - name: fetch
+    #   command: uvx
+    #   args: [mcp-server-fetch]
+    # 远程服务器示例：
+    # - name: remote
+    #   url: http://127.0.0.1:3000/mcp
+    #   transport: sse
 # 长期记忆库设置
 memory:
   auto_memorize: true   # 复杂问题回答后自动提炼长期记忆（每轮约多花 10 秒）

@@ -25,7 +25,7 @@ from langgraph.graph.message import add_messages
 BASE_DIR = Path(__file__).resolve().parent
 OLLAMA_URL = "http://127.0.0.1:11434"
 
-__version__ = "1.4.0"
+__version__ = "1.9.0"
 __author__ = "谋士 (MoShi)"
 
 # 元问题关键词（中英文，规则预判，零成本直达编排层）
@@ -321,8 +321,10 @@ def make_titles(section: str):
 
 GENERAL_GRAPH = build_pipeline("general")
 CODE_GRAPH = build_pipeline("code")
+SOCIAL_GRAPH = build_pipeline("social")
 GENERAL_TITLES = make_titles("general")
 CODE_TITLES = make_titles("code")
+SOCIAL_TITLES = make_titles("social")
 
 
 def build_graph():
@@ -575,14 +577,16 @@ def ask_agent(question, memory_ctx=None, knowledge_ctx=None):
 
 def _rebuild_graphs():
     """按当前 CLOUD_STATE 重新构建全部图与标题，替换模块级实例。"""
-    global GENERAL_GRAPH, CODE_GRAPH, AGENT_GRAPH
-    global GENERAL_TITLES, CODE_TITLES, AGENT_TITLES
+    global GENERAL_GRAPH, CODE_GRAPH, AGENT_GRAPH, SOCIAL_GRAPH
+    global GENERAL_TITLES, CODE_TITLES, AGENT_TITLES, SOCIAL_TITLES
     GENERAL_GRAPH = build_pipeline("general")
     CODE_GRAPH = build_pipeline("code")
     AGENT_GRAPH = build_agent_graph()
+    SOCIAL_GRAPH = build_pipeline("social")
     GENERAL_TITLES = make_titles("general")
     CODE_TITLES = make_titles("code")
     AGENT_TITLES = make_agent_titles()
+    SOCIAL_TITLES = make_titles("social")
 
 
 def set_cloud_enabled(flag):
@@ -609,12 +613,12 @@ def cloud_status():
 
 def get_graph(mode):
     """前端统一入口：返回当前（重建后的）图实例。"""
-    return {"general": GENERAL_GRAPH, "code": CODE_GRAPH, "agent": AGENT_GRAPH}[mode]
+    return {"general": GENERAL_GRAPH, "code": CODE_GRAPH, "agent": AGENT_GRAPH, "social": SOCIAL_GRAPH}[mode]
 
 
 def get_titles(mode):
     """前端统一入口：返回当前（重建后的）标题。"""
-    return {"general": GENERAL_TITLES, "code": CODE_TITLES, "agent": AGENT_TITLES}[mode]
+    return {"general": GENERAL_TITLES, "code": CODE_TITLES, "agent": AGENT_TITLES, "social": SOCIAL_TITLES}[mode]
 
 
 # 云端配置面板：可编辑字段与合法岗位（v1.3.1 网页配置）
@@ -716,3 +720,74 @@ def save_cloud_config(updates):
     cfg["cloud"] = new_cloud
     _rebuild_graphs()
     return cloud_status()
+
+
+# ---------------- 视觉识别（v1.5.0）：本地 VL 或云端 VL，可选模型 ----------------
+
+def _vision_cfg():
+    return cfg.get("vision") or {}
+
+
+def _ollama_has(model):
+    """Ollama 是否已注册某模型。"""
+    try:
+        import json as _json
+        with urllib.request.urlopen(f"{OLLAMA_URL}/api/tags", timeout=3) as r:
+            names = {m.get("name") for m in _json.loads(r.read()).get("models", [])}
+            return model in names
+    except Exception:
+        return False
+
+
+def iter_vision(image_b64, question="请描述这张图片", mime="image/png"):
+    """图片理解事件流：本地 Ollama VL 模型，或云端 VL API（provider 可切换）。"""
+    v = _vision_cfg()
+    q = (question or "").strip() or "请描述这张图片"
+    provider = (v.get("provider") or "local").strip().lower()
+    yield ("banner", "视觉理解（本地）" if provider == "local" else "视觉理解（云端）")
+    content = [
+        {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_b64}"}},
+        {"type": "text", "text": q},
+    ]
+    temp = float(v.get("temperature", 0.2))
+    if provider == "local":
+        model = (v.get("model") or "qwen2.5vl:7b").strip()
+        if not check_ollama():
+            yield ("error", "Ollama 服务未启动，请先启动 Ollama。")
+            return
+        if not _ollama_has(model):
+            yield ("error",
+                   f"本地未安装视觉模型 {model}。可运行 python download_models.py --with-vision 下载，"
+                   "或在 models.yaml 的 vision 段改为 provider: cloud 使用云端视觉接口。")
+            return
+        kwargs = {"model": model, "temperature": temp}
+        if v.get("num_ctx"):
+            kwargs["num_ctx"] = int(v["num_ctx"])
+        llm = ChatOllama(**kwargs)
+    else:
+        base = (v.get("cloud_base_url") or "").strip()
+        key = (v.get("cloud_api_key") or "").strip()
+        cmodel = (v.get("cloud_model") or "").strip()
+        if not (base and key and cmodel):
+            yield ("error", "云端视觉未配置：请在 models.yaml 的 vision 段填写 cloud_base_url / cloud_api_key / cloud_model。")
+            return
+        llm = ChatOpenAI(model=cmodel, api_key=key, base_url=base, temperature=temp)
+    try:
+        msg = llm.invoke([HumanMessage(content=content)])
+        text = msg.content if isinstance(msg.content, str) else str(msg.content)
+        yield ("text", text)
+        yield ("final", {"passed": True, "mode": "vision"})
+    except Exception as e:
+        yield ("error", f"视觉识别失败：{e}")
+
+
+def ask_vision(image_b64, question="请描述这张图片", mime="image/png"):
+    """一次性图片理解（终端 /图 命令用）。"""
+    parts, ok = [], True
+    for ev, d in iter_vision(image_b64, question, mime):
+        if ev == "text":
+            parts.append(d)
+        elif ev == "error":
+            ok = False
+            parts.append(f"[错误] {d}")
+    return "\n".join(parts), ok

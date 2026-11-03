@@ -286,7 +286,6 @@ cloud:
 ├─ tools.py / my_tools.py              # 内置工具 / 插件空间
 ├─ memory.py / kb.py                   # 长期记忆 / 知识库 RAG
 ├─ download_models.py                  # 六模型一键下载器
-├─ multi_agent.py / test_single.py     # 早期演示 / 单模型链路测试
 ├─ models.yaml.example / requirements.txt
 ├─ model_warehouse/                    # 模型源文件与导入配方（权重不入库）
 │   ├─ bge-m3/ deepseek-r1-8b/ internlm3-8b/

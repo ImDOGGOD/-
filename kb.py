@@ -92,19 +92,54 @@ def ingest_text(source, text):
     return len(pieces)
 
 
+def read_document_text(path):
+    """从 pdf/docx/xlsx/txt/md 提取纯文本；不支持的格式抛 ValueError。"""
+    p = Path(path)
+    suffix = p.suffix.lower()
+    if suffix == ".pdf":
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            raise ValueError("读取 PDF 需要 pypdf：pip install pypdf") from None
+        reader = PdfReader(str(p))
+        text = "\n".join((page.extract_text() or "") for page in reader.pages)
+    elif suffix == ".docx":
+        try:
+            import docx
+        except ImportError:
+            raise ValueError("读取 Word 需要 python-docx：pip install python-docx") from None
+        d = docx.Document(str(p))
+        text = "\n".join(par.text for par in d.paragraphs)
+    elif suffix in (".xlsx", ".xlsm"):
+        try:
+            import openpyxl
+        except ImportError:
+            raise ValueError("读取 Excel 需要 openpyxl：pip install openpyxl") from None
+        wb = openpyxl.load_workbook(str(p), read_only=True, data_only=True)
+        rows = []
+        for ws in wb.worksheets:
+            for row in ws.iter_rows(values_only=True):
+                rows.append("\t".join("" if c is None else str(c) for c in row))
+        text = "\n".join(rows)
+    elif suffix in (".txt", ".md", ".markdown"):
+        text = p.read_text(encoding="utf-8", errors="replace")
+    else:
+        raise ValueError(f"暂不支持 {suffix} 格式（支持 pdf/docx/xlsx/txt/md）")
+    if not (text and text.strip()):
+        raise ValueError("未能从文件中提取到文本（扫描版 PDF 请用图片识别功能）")
+    return text
+
+
 def ingest_file(path):
-    """导入本地文件（当前支持 txt/md）。"""
+    """导入本地文件（v1.5.0 起支持 pdf/docx/xlsx/txt/md）。"""
     p = Path(path).expanduser()
     if not p.is_file():
         return f"文件不存在：{p}"
-    suffix = p.suffix.lower()
-    if suffix not in (".txt", ".md", ".markdown"):
-        return f"暂不支持 {suffix} 格式（当前支持 txt/md；pdf/docx 需先安装 pypdf/python-docx）"
     try:
-        text = p.read_text(encoding="utf-8", errors="replace")
+        text = read_document_text(p)
     except Exception as e:
         return f"读取失败：{e}"
-    n = ingest_text(str(p), text)
+    n = ingest_text(p.name, text)
     return f"已导入 {n} 个片段（来源：{p.name}）"
 
 
@@ -213,6 +248,16 @@ def stats():
             "GROUP BY source ORDER BY ts DESC LIMIT 10"
         )]
     return n, sources
+
+
+def list_recent(limit=100):
+    """最近片段列表（知识看板用）。"""
+    init_db()
+    with _conn() as c:
+        rows = [dict(r) for r in c.execute(
+            "SELECT id, ts, source, substr(text, 1, 120) AS snippet FROM kb_chunks "
+            "ORDER BY id DESC LIMIT ?", (int(limit),))]
+    return rows
 
 
 def delete_chunk(cid):

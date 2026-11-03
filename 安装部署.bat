@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
-title ZuZhiDuoMou Deploy v1.4.0
+title ZuZhiDuoMou Deploy v1.9.0
 echo ============================================
-echo   ZuZhiDuoMou  Deploy Tool  v1.4.0
+echo   ZuZhiDuoMou  Deploy Tool  v1.9.0
 echo   Author: MoShi
 echo ============================================
 echo.
@@ -80,6 +80,11 @@ cd "..\bge-m3" && ollama create bge-m3 -f Modelfile
 cd ..
 echo.
 echo Deploy finished. Double-click the start bat to use the system.
+echo.
+echo [Optional] Image understanding (vision mode):
+echo   python download_models.py --with-vision
+echo   then: cd model_warehouse\qwen2.5-vl-7b
+echo   then: ollama create qwen2.5vl:7b -f Modelfile
 pause
 :no_ollama
 where winget >nul 2>nul

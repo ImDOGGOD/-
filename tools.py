@@ -163,4 +163,36 @@ def _load_extra_tools():
         return []
 
 
-TOOLS = TOOLS + _load_extra_tools()
+# 基础工具集（不含插件/MCP），用于重载时重建
+_BASE_TOOLS = list(TOOLS) + _load_extra_tools()
+
+
+def _load_plugin_tools():
+    """v1.6.0：加载 plugins/ 目录里的服务端工具。"""
+    try:
+        from plugin_host import _PLUGIN_TOOLS
+        return list(_PLUGIN_TOOLS or [])
+    except Exception as e:
+        print(f"[tools] 加载插件工具失败：{e}")
+        return []
+
+
+def _load_mcp_tools():
+    """v1.7.0：接入 MCP 服务器工具（models.yaml 的 mcp 段）。"""
+    try:
+        from mcp_client import load_mcp_tools
+        return load_mcp_tools()
+    except Exception as e:
+        print(f"[tools] MCP 加载失败：{e}")
+        return []
+
+
+def refresh_plugin_tools():
+    """插件重载后刷新 TOOLS（Web 端"重载插件"按钮调用）。"""
+    global TOOLS
+    from plugin_host import _PLUGIN_TOOLS
+    TOOLS = list(_BASE_TOOLS) + list(_PLUGIN_TOOLS or []) + _load_mcp_tools()
+    return len(TOOLS)
+
+
+TOOLS = list(_BASE_TOOLS) + _load_plugin_tools() + _load_mcp_tools()

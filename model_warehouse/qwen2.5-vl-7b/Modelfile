@@ -1,0 +1,2 @@
+FROM ./Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf
+FROM ./mmproj-model-f16.gguf

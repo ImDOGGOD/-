@@ -20,6 +20,7 @@ from core import (
     __version__,
     ask,
     ask_agent,
+    ask_vision,
     check_ollama,
     cloud_status,
     get_graph,
@@ -43,6 +44,8 @@ def command_reply(q: str):
             "  直接提问        → 通用问答模式\n"
             "  /code 问题      → 代码辅助模式（/代码）\n"
             "  /agent 任务     → Agent 工具模式（/智能体，可计算/读文件/联网搜索）\n"
+            "  /文案 需求      → 文案创作模式（/social，写帖子/评论，人工确认后发布）\n"
+            "  /图 图片路径    → 图片理解（/看图，需本地视觉模型或云端 VL）\n"
             "  /云端 开/关     → 切换云端大模型开关（/cloud）\n"
             "  /记住 内容      → 手动存入长期记忆（/remember）\n"
             "  /回忆 关键词    → 检索记忆与历史问答（/recall）\n"
@@ -50,6 +53,17 @@ def command_reply(q: str):
             "  /记忆           → 查看统计与最近记忆（/memory）\n"
             "  /知识 add <文件> | fetch <网址> | 查 <词> | 列表 | 删除 <编号> | 清空（/kb）"
         )
+    if cmd in ("/图", "/看图"):
+        from pathlib import Path
+        import base64 as _b64
+        p = Path(arg.strip().strip('"'))
+        if not p.is_file():
+            return f"[错误] 图片文件不存在：{p}"
+        mime_map = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
+                    "webp": "image/webp", "gif": "image/gif", "bmp": "image/bmp"}
+        mime = mime_map.get(p.suffix.lower().lstrip("."), "image/png")
+        text, ok = ask_vision(_b64.b64encode(p.read_bytes()).decode(), "请描述这张图片", mime)
+        return text
     if cmd in ("/云端", "/cloud"):
         if arg in ("开", "on", "1", "true"):
             st = set_cloud_enabled(True)
@@ -221,6 +235,17 @@ def main():
                             print(f"[√] 自动提炼 {len(items)} 条长期记忆（用 /记忆 查看）")
                     except Exception:
                         pass
+        elif low.startswith("/文案") or low.startswith("/social"):
+            question = q.split(maxsplit=1)[1].strip() if " " in q else ""
+            if not question:
+                print("[!] 用法：/文案 平台+主题+要求（例如：/文案 小红书 推荐一款蓝牙耳机，活泼语气，300字）")
+                continue
+            mem_ctx = memory.build_context(question)
+            kb_ctx = kb.build_context(question)
+            result = ask(get_graph("social"), get_titles("social"), question, list(history), memory_ctx=mem_ctx, knowledge_ctx=kb_ctx)
+            if result is None:
+                continue
+            finish_turn(question, result, "social", history)
         else:
             mem_ctx = memory.build_context(q)
             kb_ctx = kb.build_context(q)

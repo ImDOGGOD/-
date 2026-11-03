@@ -286,7 +286,6 @@ ZuZhiDuoMou/
 ├─ tools.py / my_tools.py              # Built-in tools / plugin space
 ├─ memory.py / kb.py                   # Long-term memory / knowledge-base RAG
 ├─ download_models.py                  # Six-model downloader
-├─ multi_agent.py / test_single.py     # Early demo / single-model test
 ├─ models.yaml.example / requirements.txt
 ├─ model_warehouse/                    # Model sources and import recipes (weights not tracked)
 │   ├─ bge-m3/ deepseek-r1-8b/ internlm3-8b/

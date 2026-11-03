@@ -1,12 +1,14 @@
-"""足智多谋 · 六模型一键下载器（魔搭渠道，断点续传 + 自动重试 + 全程日志）。
+"""足智多谋 · 模型一键下载器（魔搭渠道，断点续传 + 自动重试 + 全程日志）。
 
 用法：python download_models.py（或 .venv\\Scripts\\python.exe download_models.py）
+      python download_models.py --with-vision   ← 额外下载视觉模型 qwen2.5vl:7b（约 4.4GB，可选）
 产物：model_warehouse\\<模型目录>\\<文件>
 日志：gguf\\download_all.log（每次运行追加，含时间戳与进度）
 
 特点：中断后重跑自动续传；单个模型失败不影响其余；全部完成后提示运行安装部署.bat。
 """
 import os
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -47,13 +49,25 @@ MODELS = [
     {
         "name": "deepseek-r1:8b", "dir": "deepseek-r1-8b", "files": [
             ("https://www.modelscope.cn/models/bartowski/deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-GGUF/resolve/master/deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-Q4_K_M.gguf",
-             "deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-Q4_K_M.gguf", 5027783488),
+             "deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-Q4_K_M.gguf", 5027783040),
         ],
     },
     {
         "name": "bge-m3", "dir": "bge-m3", "files": [
             ("https://www.modelscope.cn/models/Xorbits/bge-m3-GGUF/resolve/master/bge-m3-Q8_0.gguf",
              "bge-m3-Q8_0.gguf", 634553856),
+        ],
+    },
+]
+
+# 可选：视觉模型（图片理解，v1.5.0；--with-vision 时才下载）
+MODELS_VISION = [
+    {
+        "name": "qwen2.5vl:7b", "dir": "qwen2.5-vl-7b", "files": [
+            ("https://www.modelscope.cn/models/lmstudio-community/Qwen2.5-VL-7B-Instruct-GGUF/resolve/master/Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf",
+             "Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf", 4683072032),
+            ("https://www.modelscope.cn/models/lmstudio-community/Qwen2.5-VL-7B-Instruct-GGUF/resolve/master/mmproj-model-f16.gguf",
+             "mmproj-model-f16.gguf", 1354162912),
         ],
     },
 ]
@@ -102,27 +116,34 @@ def download(url, dest, size):
 def main():
     STAGE.mkdir(exist_ok=True)
     WH.mkdir(exist_ok=True)
-    log("=== 足智多谋 模型下载任务开始（共 6 个模型，约 13GB）===")
+    with_vision = "--with-vision" in sys.argv
+    models = MODELS + (MODELS_VISION if with_vision else [])
+    log(f"=== 足智多谋 模型下载任务开始（共 {len(models)} 个模型{'，含视觉模型' if with_vision else ''}）===")
     done = 0
-    for m in MODELS:
+    for m in models:
+        dst = WH / m["dir"]
+        dst.mkdir(exist_ok=True)
         ok = True
         for url, fname, size in m["files"]:
+            final_path = dst / fname
+            if final_path.exists() and final_path.stat().st_size >= size:
+                log(f"跳过（已存在）{m['name']} / {fname}")
+                continue
             log(f"下载 {m['name']} / {fname}")
             if download(url, STAGE / fname, size):
+                os.replace(STAGE / fname, final_path)
                 log(f"  完成 {fname}（{size} 字节）")
             else:
                 ok = False
                 log(f"  失败 {fname}（重跑本脚本可续传）")
         if ok:
-            dst = WH / m["dir"]
-            dst.mkdir(exist_ok=True)
-            for _, fname, _ in m["files"]:
-                os.replace(STAGE / fname, dst / fname)
-            log(f"{m['name']} 已归位到 model_warehouse\\{m['dir']}")
+            log(f"{m['name']} 已就绪于 model_warehouse\\{m['dir']}")
             done += 1
-    log(f"=== 结束：{done}/{len(MODELS)} 个模型就绪 ===")
-    if done == len(MODELS):
+    log(f"=== 结束：{done}/{len(models)} 个模型就绪 ===")
+    if done == len(models):
         log("全部模型就绪。请运行安装部署.bat 完成导入。")
+        if with_vision:
+            log("视觉模型导入：cd model_warehouse\\qwen2.5-vl-7b 然后 ollama create qwen2.5vl:7b -f Modelfile")
     else:
         log("有模型未完成：重新运行本脚本即可断点续传。")
 

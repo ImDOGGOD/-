@@ -80,6 +80,16 @@ def delete_memory(mid):
         return cur.rowcount > 0
 
 
+def list_recent(limit=100):
+    """最近记忆列表（记忆看板用）。"""
+    init_db()
+    with _conn() as c:
+        rows = [dict(r) for r in c.execute(
+            "SELECT id, ts, kind, content, tags, strength FROM memories "
+            "ORDER BY id DESC LIMIT ?", (int(limit),))]
+    return rows
+
+
 def stats():
     init_db()
     with _conn() as c:
