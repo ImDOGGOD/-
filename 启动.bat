@@ -1,13 +1,13 @@
 @echo off
 cd /d "%~dp0"
 chcp 65001 >nul
-title ZuZhiDuoMou v2.1.5
+title ZuZhiDuoMou v2.1.6
 :menu
 color 0B
 cls
 echo.
 echo  ==============================================================
-echo    ZuZhiDuoMou  (Zu Zhi Duo Mou)  v2.1.5
+echo    ZuZhiDuoMou  (Zu Zhi Duo Mou)  v2.1.6
 echo    Local Multi-Agent System
 echo    Author: MoShi
 echo.
@@ -43,10 +43,9 @@ goto menu
 ".venv\Scripts\python.exe" ollama_check.py >nul 2>nul
 if not errorlevel 1 goto ollama_ok
 echo.
-echo  [INFO] Ollama is not running. Starting it in background...
-where ollama >nul 2>nul
+echo  [INFO] Ollama is not running. Starting it...
+call :start_ollama
 if errorlevel 1 goto no_ollama
-start "Ollama Service" /min cmd /c "ollama serve"
 set OLLAMA_WAIT=0
 :poll_ollama
 ".venv\Scripts\python.exe" ollama_check.py >nul 2>nul
@@ -55,6 +54,20 @@ set /a OLLAMA_WAIT+=1
 if %OLLAMA_WAIT% geq 30 goto ollama_timeout
 ping 127.0.0.1 -n 2 >nul
 goto poll_ollama
+
+:start_ollama
+if exist "%LOCALAPPDATA%\Programs\Ollama\ollama app.exe" goto start_app_local
+if exist "%ProgramFiles%\Ollama\ollama app.exe" goto start_app_pf
+where ollama >nul 2>nul
+if errorlevel 1 exit /b 1
+start "Ollama Service" /min cmd /c "ollama serve"
+exit /b 0
+:start_app_local
+start "" "%LOCALAPPDATA%\Programs\Ollama\ollama app.exe"
+exit /b 0
+:start_app_pf
+start "" "%ProgramFiles%\Ollama\ollama app.exe"
+exit /b 0
 
 :ollama_ok
 echo  [OK] Ollama is running.
@@ -69,7 +82,7 @@ exit /b 1
 
 :no_ollama
 echo.
-echo  [WARN] ollama command not found.
+echo  [WARN] ollama not found.
 echo         Install Ollama from: https://ollama.com/download
 pause
 exit /b 1

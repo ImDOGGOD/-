@@ -787,3 +787,20 @@
 - 字节校验：启动.bat CRLF+ASCII；pytest 15/15。
 
 —— 谋士（MoShi），2026-11-05
+
+## v2.1.6（2026-11-05，谋士 MoShi）—— 启动 Ollama 桌面应用（有托盘）+ 关闭Ollama.bat
+
+### 修复（启动.bat 只拉纯后台 serve，没有托盘图标，用户无法从 UI 退出）
+- 现象：启动.bat 拉起的是 `ollama.exe serve`（纯后台服务），**没有 `ollama app.exe` 桌面应用进程**，因此系统托盘没有 Ollama 图标，用户无法右键退出，也清理不掉后台。
+- 根因：`start ... ollama serve` 只启动命令行服务，未启动 Ollama 桌面应用（`ollama app.exe`）。
+- 修复：
+  1. 启动.bat 改为**优先启动 `ollama app.exe`**（桌面应用，带托盘图标，可右键 Quit；它自身会自动带动 `ollama.exe serve`），找不到桌面应用才回退到 `ollama serve`；
+  2. 新增 **`关闭Ollama.bat`**：一键 `taskkill` 结束 `ollama app.exe` 与 `ollama.exe`，清理 Ollama 后台。
+
+### 验证（本机实测）
+- 启动 `ollama app.exe` 后：进程有 `ollama app`（MainWindowTitle = "Ollama"，托盘可见）+ 自动带起 `ollama.exe serve`，11434 在线；
+- 启动.bat 从零拉起（Ollama 与 webui 均未运行）：`[INFO] → [OK]` → `ollama app.exe` 托盘 + webui 监听 8765；
+- `关闭Ollama.bat` 实测：两个进程全清，11434 关闭，退出码 0；
+- 字节校验：启动.bat / 关闭Ollama.bat CRLF+ASCII；pytest 15/15。
+
+—— 谋士（MoShi），2026-11-05

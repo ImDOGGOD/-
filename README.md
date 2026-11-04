@@ -338,7 +338,7 @@ mcp:                   # MCP 工具接入（默认关闭）
 │   ├─ qwen2.5-7b/ qwen2.5-coder-7b/ spark-x2.5-4b/ qwen2.5-vl-7b/
 │   └─ import_model.ps1 等辅助文件
 ├─ docs/banner.png                     # 文档配图
-├─ 启动.bat / 安装部署.bat / 打包到U盘.bat / 一键卸载.bat / 诊断自检.bat / 关闭Web界面.bat
+├─ 启动.bat / 安装部署.bat / 打包到U盘.bat / 一键卸载.bat / 诊断自检.bat / 关闭Web界面.bat / 关闭Ollama.bat
 ├─ README.md / README.en.md / VERSION.md
 ├─ 系统说明书.md / 技术架构.md / 无模型库部署教程.md / CHANGELOG.md
 ├─ .gitattributes / .gitignore / LICENSE
