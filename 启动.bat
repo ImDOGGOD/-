@@ -1,20 +1,15 @@
 @echo off
+cd /d "%~dp0"
 chcp 65001 >nul
-title ZuZhiDuoMou v2.1.4
+title ZuZhiDuoMou v2.1.5
 :menu
 color 0B
 cls
 echo.
 echo  ==============================================================
-echo    __       __   ______   __  __   __        __       ______
-echo   /\ \     /\ \ /\  __ \ /\ \/\ \ /\ \      /\ \     /\  __ \
-echo   \ \ \____\ \ \\ \ \_\ \\ \ \_\ \\ \ \     \ \ \____\ \ \_\ \
-echo    \ \_____\\ \_\\ \_____\\ \_____\\ \_\     \ \_____\\ \_____\
-echo     \/_____/ \/_/ \/_____/ \/_____/ \/_/      \/_____/ \/_____/
-echo.
-echo        ZuZhiDuoMou  (Zu Zhi Duo Mou)  v2.1.4
-echo        Local Multi-Agent System
-echo        Author: MoShi
+echo    ZuZhiDuoMou  (Zu Zhi Duo Mou)  v2.1.5
+echo    Local Multi-Agent System
+echo    Author: MoShi
 echo.
 echo        [1] Web UI   - chat in your browser (recommended)
 echo        [2] Console  - chat in this window
@@ -26,12 +21,55 @@ choice /c 1234 /n /m "        Choose [1/2/3/4]: "
 if errorlevel 4 exit /b 0
 if errorlevel 3 start "" "README.md" & goto menu
 if errorlevel 2 goto console
+goto web
+
+:web
+call :ensure_ollama
+if errorlevel 1 goto menu
 ".venv\Scripts\python.exe" webui.py
 echo.
 echo  Web UI closed. Back to menu...
 pause
 goto menu
+
 :console
+call :ensure_ollama
+if errorlevel 1 goto menu
 ".venv\Scripts\python.exe" chat.py
 if errorlevel 1 pause
 goto menu
+
+:ensure_ollama
+".venv\Scripts\python.exe" ollama_check.py >nul 2>nul
+if not errorlevel 1 goto ollama_ok
+echo.
+echo  [INFO] Ollama is not running. Starting it in background...
+where ollama >nul 2>nul
+if errorlevel 1 goto no_ollama
+start "Ollama Service" /min cmd /c "ollama serve"
+set OLLAMA_WAIT=0
+:poll_ollama
+".venv\Scripts\python.exe" ollama_check.py >nul 2>nul
+if not errorlevel 1 goto ollama_ok
+set /a OLLAMA_WAIT+=1
+if %OLLAMA_WAIT% geq 30 goto ollama_timeout
+ping 127.0.0.1 -n 2 >nul
+goto poll_ollama
+
+:ollama_ok
+echo  [OK] Ollama is running.
+exit /b 0
+
+:ollama_timeout
+echo.
+echo  [WARN] Ollama did not start within 30 seconds.
+echo         Please start the Ollama app from the Start Menu and retry.
+pause
+exit /b 1
+
+:no_ollama
+echo.
+echo  [WARN] ollama command not found.
+echo         Install Ollama from: https://ollama.com/download
+pause
+exit /b 1

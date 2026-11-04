@@ -767,3 +767,23 @@
 - **全程 0 次 `unexpected` 解析错误**；字节校验 CRLF+ASCII；pytest 15/15。
 
 —— 谋士（MoShi），2026-11-03
+
+## v2.1.5（2026-11-05，谋士 MoShi）—— 启动.bat 自动拉起 Ollama
+
+### 新增（启动.bat 现在会连带启动运行所需组件）
+- 选 [1] Web / [2] 终端前，先自动检测 Ollama：未运行时**后台拉起 `ollama serve`**，轮询等待就绪（最多 30 秒），就绪后再启动界面；
+- 新增 `ollama_check.py`（纯 ASCII 轻量检测，HTTP 请求 11434，退出码 0/1）；
+- 缺 `ollama` 命令时只提示安装地址，不依赖 winget、不中断。
+
+### 修复（启动.bat 两个真实 bug）
+1. **缺 `cd /d "%~dp0"`**：从快捷方式/命令行/其他目录调用时，相对路径 `.venv\Scripts\python.exe` 找不到，导致误判"Ollama 未运行"甚至启动失败；已补上目录切换。
+2. **ollama_check.py 带中文 docstring**：在 `chcp 65001` + 输出重定向下编码异常退出，被误判为"未运行"，导致明明 Ollama 在线却走自动安装分支；已改为纯 ASCII。
+
+### 验证（本机实测，循环 2 遍 + 多场景）
+- **从零启动**（Ollama 与 webui 均未运行）：`[INFO] Ollama is not running...` → 自动启动 → `[OK] Ollama is running.` → webui 监听 8765；循环 2 遍全通过；
+- **Ollama 已在线**：直接启动 webui，无需重复拉起；
+- **从错误目录调用**（工作目录 C:\Windows）：`cd /d` 修复后仍正确工作；
+- 自动启动后的 webui 功能验证：页面加载、杀后台按钮、ping（7 模型）、chat 完整事件流全通过；
+- 字节校验：启动.bat CRLF+ASCII；pytest 15/15。
+
+—— 谋士（MoShi），2026-11-05
